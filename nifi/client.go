@@ -29,7 +29,7 @@ type Position struct {
 	Y float64 `json:"y"`
 }
 
-func (c *Client) PostCall(url string, bodyIn interface{}, bodyOut interface{}) (error) {
+func (c *Client) PostCall(url string, bodyIn interface{}, bodyOut interface{}) error {
 	requestBody := new(bytes.Buffer)
 	json.NewEncoder(requestBody).Encode(bodyIn)
 
@@ -51,6 +51,34 @@ func (c *Client) PostCall(url string, bodyIn interface{}, bodyOut interface{}) (
 	}
 
 	return nil
+}
+
+// Process Group section
+
+type ProcessGroupComponent struct {
+	Id            string          `json:"id,omitempty"`
+	ParentGroupId string          `json:"parentGroupId"`
+	Name          string          `json:"name"`
+	Position      Position        `json:"position"`
+}
+
+type ProcessGroup struct {
+	Revision  Revision              `json:"revision"`
+	Component ProcessGroupComponent `json:"component"`
+}
+
+func (c *Client) CreateProcessGroup(processGroup *ProcessGroup) (string, error) {
+	url := "http://" + c.Config.Host + "/" + c.Config.ApiPath + "/process-groups/" + processGroup.Component.ParentGroupId + "/process-groups"
+
+	result := ProcessGroup{}
+	err := c.PostCall(url, processGroup, &result)
+	if err != nil {
+		return "", err
+	}
+
+	processGroup.Component.Id = result.Component.Id
+
+	return processGroup.Component.Id, nil
 }
 
 // Processor section
@@ -76,23 +104,9 @@ type Processor struct {
 
 func (c *Client) CreateProcessor(processor *Processor) (string, error) {
 	url := "http://" + c.Config.Host + "/" + c.Config.ApiPath + "/process-groups/" + processor.Component.ParentGroupId + "/processors"
-	requestBody := new(bytes.Buffer)
-	json.NewEncoder(requestBody).Encode(processor)
-
-	request, err := http.NewRequest("POST", url, requestBody)
-	if err != nil {
-		return "", err
-	}
-	request.Header.Add("Content-Type", "application/json; charset=utf-8")
-
-	response, err := c.Client.Do(request)
-	if err != nil {
-		return "", err
-	}
-	defer response.Body.Close()
 
 	result := Processor{}
-	err = json.NewDecoder(response.Body).Decode(&result)
+	err := c.PostCall(url, processor, &result)
 	if err != nil {
 		return "", err
 	}

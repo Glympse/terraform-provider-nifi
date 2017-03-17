@@ -23,8 +23,9 @@ func Provider() terraform.ResourceProvider {
 		},
 
 		ResourcesMap: map[string]*schema.Resource{
-			"nifi_processor":  ResourceProcessor(),
-			"nifi_connection": ResourceConnection(),
+			"nifi_process_group": ResourceProcessGroup(),
+			"nifi_processor":     ResourceProcessor(),
+			"nifi_connection":    ResourceConnection(),
 		},
 
 		ConfigureFunc: providerConfigure,

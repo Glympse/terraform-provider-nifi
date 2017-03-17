@@ -1,5 +1,5 @@
 nifi_host = "10.0.119.99:3330"
-nifi_root_process_group_id = "d40cbdb7-015a-1000-ffff-ffffad375259"
+nifi_root_process_group_id = "root"
 kafka_brokers = "localhost:9200"
 kafka_topic = "topic"
 kafka_consumer_group_id = "nifi-api-streamer"

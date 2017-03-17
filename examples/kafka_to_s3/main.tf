@@ -2,9 +2,21 @@ provider "nifi" {
   host = "${var.nifi_host}"
 }
 
-resource "nifi_processor" "consume_kafka" {
+resource "nifi_process_group" "kafka_to_s3_example" {
   component {
     parent_group_id = "${var.nifi_root_process_group_id}"
+    name = "kafka_to_s3_example"
+
+    position {
+      x = 0
+      y = 0
+    }
+  }
+}
+
+resource "nifi_processor" "consume_kafka" {
+  component {
+    parent_group_id = "${nifi_process_group.kafka_to_s3_example.id}"
     name = "consume_kafka"
     type = "org.apache.nifi.processors.kafka.pubsub.ConsumeKafka_0_10"
 
@@ -31,7 +43,7 @@ resource "nifi_processor" "consume_kafka" {
 
 resource "nifi_processor" "merge_content" {
   component {
-    parent_group_id = "${var.nifi_root_process_group_id}"
+    parent_group_id = "${nifi_process_group.kafka_to_s3_example.id}"
     name = "merge_content"
     type = "org.apache.nifi.processors.standard.MergeContent"
 
@@ -65,7 +77,7 @@ resource "nifi_processor" "merge_content" {
 
 resource "nifi_connection" "kafka_to_merge" {
   "component" {
-    parent_group_id = "${var.nifi_root_process_group_id}"
+    parent_group_id = "${nifi_process_group.kafka_to_s3_example.id}"
 
     source {
       type = "PROCESSOR"
@@ -85,7 +97,7 @@ resource "nifi_connection" "kafka_to_merge" {
 
 resource "nifi_processor" "put_s3_object" {
   component {
-    parent_group_id = "${var.nifi_root_process_group_id}"
+    parent_group_id = "${nifi_process_group.kafka_to_s3_example.id}"
     name = "put_s3_object"
     type = "org.apache.nifi.processors.aws.s3.PutS3Object"
 
@@ -117,7 +129,7 @@ resource "nifi_processor" "put_s3_object" {
 
 resource "nifi_connection" "merge_to_s3" {
   component {
-    parent_group_id = "${var.nifi_root_process_group_id}"
+    parent_group_id = "${nifi_process_group.kafka_to_s3_example.id}"
 
     source {
       type = "PROCESSOR"
@@ -137,7 +149,7 @@ resource "nifi_connection" "merge_to_s3" {
 
 resource "nifi_connection" "s3_to_s3" {
   component {
-    parent_group_id = "${var.nifi_root_process_group_id}"
+    parent_group_id = "${nifi_process_group.kafka_to_s3_example.id}"
 
     source {
       type = "PROCESSOR"
