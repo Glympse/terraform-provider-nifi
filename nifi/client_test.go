@@ -1,30 +1,31 @@
 package nifi
 
 import (
-	"testing"
 	"github.com/stretchr/testify/assert"
+	"testing"
 )
 
 func TestClientProcessorCreate(t *testing.T) {
 	config := Config{
 		Host:               "10.0.119.99:3330",
 		ApiPath:            "nifi-api",
-		RootProcessGroupId: "root",
 	}
 	client := NewClient(config)
 
 	processor := Processor{
-		Revision: ProcessorRevision{
+		Revision: Revision{
 			Version: 0,
 		},
 		Component: ProcessorComponent{
+			ParentGroupId: "root",
 			Name: "consume-kafka",
 			Type: "org.apache.nifi.processors.kafka.pubsub.ConsumeKafka_0_10",
-			Position: ProcessorPosition{
+			Position: Position{
 				X: 0,
 				Y: 0,
 			},
 			Config: ProcessorConfig{
+				ConcurrentlySchedulableTaskCount: 1,
 				Properties: map[string]string{
 					"security.protocol":      "PLAINTEXT",
 					"topic":                  "cards-core-api",
@@ -40,7 +41,7 @@ func TestClientProcessorCreate(t *testing.T) {
 			},
 		},
 	}
-	client.CreateProcessor("root", &processor)
+	client.CreateProcessor(&processor)
 
 	assert.NotEmpty(t, processor.Component.Id)
 }

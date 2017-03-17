@@ -26,6 +26,8 @@ resource "nifi_processor" "consume_kafka" {
     }
 
     config {
+      concurrently_schedulable_task_count = "${var.kafka_partitions}"
+
       properties {
         "bootstrap.servers" = "${var.kafka_brokers}"
         "security.protocol" = "PLAINTEXT"

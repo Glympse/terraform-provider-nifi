@@ -52,6 +52,21 @@ func ResourceProcessor() *schema.Resource {
 							Required: true,
 							Elem: &schema.Resource{
 								Schema: map[string]*schema.Schema{
+									"concurrently_schedulable_task_count": {
+										Type:     schema.TypeInt,
+										Optional: true,
+										Default:  1,
+									},
+									"scheduling_strategy": {
+										Type:     schema.TypeString,
+										Optional: true,
+										Default:  "TIMER_DRIVEN",
+									},
+									"scheduling_period": {
+										Type:     schema.TypeString,
+										Optional: true,
+										Default:  "0 sec",
+									},
 									"properties": {
 										Type:     schema.TypeMap,
 										Required: true,
@@ -99,6 +114,10 @@ func ResourceProcessorCreate(d *schema.ResourceData, meta interface{}) error {
 		return fmt.Errorf("Exactly one component.config is required")
 	}
 	config := v[0].(map[string]interface{})
+
+	processor.Component.Config.SchedulingStrategy = config["scheduling_strategy"].(string)
+	processor.Component.Config.SchedulingPeriod = config["scheduling_period"].(string)
+	processor.Component.Config.ConcurrentlySchedulableTaskCount = config["concurrently_schedulable_task_count"].(int)
 
 	processor.Component.Config.Properties = map[string]string{}
 	properties := config["properties"].(map[string]interface{})

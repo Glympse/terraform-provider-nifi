@@ -56,10 +56,10 @@ func (c *Client) PostCall(url string, bodyIn interface{}, bodyOut interface{}) e
 // Process Group section
 
 type ProcessGroupComponent struct {
-	Id            string          `json:"id,omitempty"`
-	ParentGroupId string          `json:"parentGroupId"`
-	Name          string          `json:"name"`
-	Position      Position        `json:"position"`
+	Id            string   `json:"id,omitempty"`
+	ParentGroupId string   `json:"parentGroupId"`
+	Name          string   `json:"name"`
+	Position      Position `json:"position"`
 }
 
 type ProcessGroup struct {
@@ -84,6 +84,10 @@ func (c *Client) CreateProcessGroup(processGroup *ProcessGroup) (string, error) 
 // Processor section
 
 type ProcessorConfig struct {
+	SchedulingStrategy               string `json:"schedulingStrategy"`
+	SchedulingPeriod                 string `json:"schedulingPeriod"`
+	ConcurrentlySchedulableTaskCount int    `json:"concurrentlySchedulableTaskCount"`
+
 	Properties                  map[string]string `json:"properties"`
 	AutoTerminatedRelationships []string          `json:"autoTerminatedRelationships"`
 }

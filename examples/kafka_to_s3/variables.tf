@@ -14,6 +14,10 @@ variable "kafka_topic" {
   description = "The name of Kafka topic to read messages from"
 }
 
+variable "kafka_partitions" {
+  description = "A numer of Kafka partitions"
+}
+
 variable "kafka_consumer_group_id" {
   description = "ID of consumer group"
 }
