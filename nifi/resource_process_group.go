@@ -15,51 +15,19 @@ func ResourceProcessGroup() *schema.Resource {
 		Exists: ResourceProcessGroupExists,
 
 		Schema: map[string]*schema.Schema{
-			"parent_group_id": {
-				Type:     schema.TypeString,
-				Computed: true,
-			},
-			"revision": {
-				Type:     schema.TypeList,
-				Computed: true,
-				Elem: &schema.Resource{
-					Schema: map[string]*schema.Schema{
-						"version": {
-							Type:     schema.TypeInt,
-							Computed: true,
-						},
-					},
-				},
-			},
+			"parent_group_id": SchemaParentGroupId(),
+			"revision": SchemaRevision(),
 			"component": {
 				Type:     schema.TypeList,
 				Required: true,
 				Elem: &schema.Resource{
 					Schema: map[string]*schema.Schema{
-						"parent_group_id": {
-							Type:     schema.TypeString,
-							Required: true,
-						},
+						"parent_group_id": SchemaParentGroupId(),
 						"name": {
 							Type:     schema.TypeString,
 							Required: true,
 						},
-						"position": {
-							Type:     schema.TypeList,
-							Required: true,
-							Elem: &schema.Resource{
-								Schema: map[string]*schema.Schema{
-									"x": {
-										Type:     schema.TypeFloat,
-										Required: true,
-									},
-									"y": {
-										Type:     schema.TypeFloat,
-										Required: true,
-									},
-								},
-							},
-						},
+						"position": SchemaPosition(),
 					},
 				},
 			},

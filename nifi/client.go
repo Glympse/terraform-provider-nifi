@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"io"
 )
 
 type Client struct {
@@ -30,26 +31,14 @@ type Position struct {
 	Y float64 `json:"y"`
 }
 
-func (c *Client) EncodeObject(obj interface{}) *bytes.Buffer {
-	if obj != nil {
-		buffer := new(bytes.Buffer)
-		json.NewEncoder(buffer).Encode(obj)
-		return buffer
-	} else {
-		return nil
-	}
-}
-
 func (c *Client) JsonCall(method string, url string, bodyIn interface{}, bodyOut interface{}) error {
-	var request *http.Request
-	var err error
+	var requestBody io.Reader = nil
 	if bodyIn != nil {
-		requestBody := new(bytes.Buffer)
-		json.NewEncoder(requestBody).Encode(bodyIn)
-		request, err = http.NewRequest(method, url, requestBody)
-	} else {
-		request, err = http.NewRequest(method, url, nil)
+		var buffer = new(bytes.Buffer)
+		json.NewEncoder(buffer).Encode(bodyIn)
+		requestBody = buffer
 	}
+	request, err := http.NewRequest(method, url, requestBody)
 	if err != nil {
 		return err
 	}
@@ -148,18 +137,36 @@ type Processor struct {
 	Component ProcessorComponent `json:"component"`
 }
 
-func (c *Client) CreateProcessor(processor *Processor) (string, error) {
-	url := "http://" + c.Config.Host + "/" + c.Config.ApiPath + "/process-groups/" + processor.Component.ParentGroupId + "/processors"
+func (c *Client) CreateProcessor(processor *Processor) error {
+	url := fmt.Sprintf("http://%s/%s/process-groups/%s/processors",
+		c.Config.Host, c.Config.ApiPath, processor.Component.ParentGroupId)
+	err := c.JsonCall("POST", url, processor, processor)
+	return err
+}
 
-	result := Processor{}
-	err := c.JsonCall("POST", url, processor, &result)
+func (c *Client) GetProcessor(processorId string) (*Processor, error) {
+	url := fmt.Sprintf("http://%s/%s/processors/%s",
+		c.Config.Host, c.Config.ApiPath, processorId)
+	processor := Processor{}
+	err := c.JsonCall("GET", url, nil, &processor)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
+	return &processor, nil
+}
 
-	processor.Component.Id = result.Component.Id
+func (c *Client) UpdateProcessor(processor *Processor) error {
+	url := fmt.Sprintf("http://%s/%s/processors/%s",
+		c.Config.Host, c.Config.ApiPath, processor.Component.Id)
+	err := c.JsonCall("PUT", url, processor, processor)
+	return err
+}
 
-	return processor.Component.Id, nil
+func (c *Client) DeleteProcessor(processorId string) error {
+	url := fmt.Sprintf("http://%s/%s/processors/%s",
+		c.Config.Host, c.Config.ApiPath, processorId)
+	err := c.JsonCall("DELETE", url, nil, nil)
+	return err
 }
 
 // Connection section
@@ -183,16 +190,34 @@ type Connection struct {
 	Component ConnectionComponent `json:"component"`
 }
 
-func (c *Client) CreateConnection(connection *Connection) (string, error) {
-	url := "http://" + c.Config.Host + "/" + c.Config.ApiPath + "/process-groups/" + connection.Component.ParentGroupId + "/connections"
+func (c *Client) CreateConnection(connection *Connection) error {
+	url := fmt.Sprintf("http://%s/%s/process-groups/%s/connections",
+		c.Config.Host, c.Config.ApiPath, connection.Component.ParentGroupId)
+	err := c.JsonCall("POST", url, connection, connection)
+	return err
+}
 
-	result := Connection{}
-	err := c.JsonCall("POST", url, connection, &result)
+func (c *Client) GetConnection(connectionId string) (*Connection, error) {
+	url := fmt.Sprintf("http://%s/%s/connections/%s",
+		c.Config.Host, c.Config.ApiPath, connectionId)
+	connection := Connection{}
+	err := c.JsonCall("GET", url, nil, &connection)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
+	return &connection, nil
+}
 
-	connection.Component.Id = result.Component.Id
+func (c *Client) UpdateConnection(connection *Connection) error {
+	url := fmt.Sprintf("http://%s/%s/connections/%s",
+		c.Config.Host, c.Config.ApiPath, connection.Component.Id)
+	err := c.JsonCall("PUT", url, connection, connection)
+	return err
+}
 
-	return connection.Component.Id, nil
+func (c *Client) DeleteConnection(connectionId string) error {
+	url := fmt.Sprintf("http://%s/%s/connections/%s",
+		c.Config.Host, c.Config.ApiPath, connectionId)
+	err := c.JsonCall("DELETE", url, nil, nil)
+	return err
 }

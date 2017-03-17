@@ -132,7 +132,7 @@ func ResourceConnectionCreate(d *schema.ResourceData, meta interface{}) error {
 		connection.Component.Bends = bends
 	}
 
-	_, err := client.CreateConnection(&connection)
+	err := client.CreateConnection(&connection)
 	if err != nil {
 		return err
 	}

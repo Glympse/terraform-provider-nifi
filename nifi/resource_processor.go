@@ -3,6 +3,7 @@ package nifi
 import (
 	"fmt"
 	"github.com/hashicorp/terraform/helper/schema"
+	"log"
 )
 
 func ResourceProcessor() *schema.Resource {
@@ -14,15 +15,14 @@ func ResourceProcessor() *schema.Resource {
 		Exists: ResourceProcessorExists,
 
 		Schema: map[string]*schema.Schema{
+			"parent_group_id": SchemaParentGroupId(),
+			"revision":        SchemaRevision(),
 			"component": {
 				Type:     schema.TypeList,
 				Required: true,
 				Elem: &schema.Resource{
 					Schema: map[string]*schema.Schema{
-						"parent_group_id": {
-							Type:     schema.TypeString,
-							Required: true,
-						},
+						"parent_group_id": SchemaParentGroupId(),
 						"name": {
 							Type:     schema.TypeString,
 							Required: true,
@@ -31,22 +31,7 @@ func ResourceProcessor() *schema.Resource {
 							Type:     schema.TypeString,
 							Required: true,
 						},
-						"position": {
-							Type:     schema.TypeList,
-							Required: true,
-							Elem: &schema.Resource{
-								Schema: map[string]*schema.Schema{
-									"x": {
-										Type:     schema.TypeFloat,
-										Required: true,
-									},
-									"y": {
-										Type:     schema.TypeFloat,
-										Required: true,
-									},
-								},
-							},
-						},
+						"position": SchemaPosition(),
 						"config": {
 							Type:     schema.TypeList,
 							Required: true,
@@ -92,6 +77,96 @@ func ResourceProcessorCreate(d *schema.ResourceData, meta interface{}) error {
 	processor := Processor{}
 	processor.Revision.Version = 0
 
+	err := ProcessorFromSchema(d, &processor)
+	if err != nil {
+		return fmt.Errorf("Failed to parse Processor schema")
+	}
+
+	err = client.CreateProcessor(&processor)
+	if err != nil {
+		return fmt.Errorf("Failed to create Processor")
+	}
+
+	d.SetId(processor.Component.Id)
+	d.Set("parent_group_id", processor.Component.ParentGroupId)
+
+	return ResourceProcessorRead(d, meta)
+}
+
+func ResourceProcessorRead(d *schema.ResourceData, meta interface{}) error {
+	processorId := d.Id()
+
+	client := meta.(*Client)
+	processor, err := client.GetProcessor(processorId)
+	if err != nil {
+		return fmt.Errorf("Error retrieving Processor: %s", processorId)
+	}
+
+	err = ProcessorToSchema(d, processor)
+	if err != nil {
+		return fmt.Errorf("Failed to serialize Processor: %s", processorId)
+	}
+
+	return nil
+}
+
+func ResourceProcessorUpdate(d *schema.ResourceData, meta interface{}) error {
+	processorId := d.Id()
+
+	client := meta.(*Client)
+	processor, err := client.GetProcessor(processorId)
+	if err != nil {
+		return fmt.Errorf("Error retrieving Processor: %s", processorId)
+	}
+
+	err = ProcessorFromSchema(d, processor)
+	if err != nil {
+		return fmt.Errorf("Failed to parse Processor schema: %s", processorId)
+	}
+
+	err = client.UpdateProcessor(processor)
+	if err != nil {
+		return fmt.Errorf("Failed to update Processor: %s", processorId)
+	}
+
+	return ResourceProcessorRead(d, meta)
+}
+
+func ResourceProcessorDelete(d *schema.ResourceData, meta interface{}) error {
+	processorId := d.Id()
+	log.Printf("[INFO] Deleting Processor: %s", processorId)
+
+	client := meta.(*Client)
+	err := client.DeleteProcessor(processorId)
+	if err != nil {
+		return fmt.Errorf("Error deleting Processor: %s", processorId)
+	}
+
+	d.SetId("")
+	return nil
+}
+
+func ResourceProcessorExists(d *schema.ResourceData, meta interface{}) (bool, error) {
+	processorId := d.Id()
+
+	client := meta.(*Client)
+	processor, err := client.GetProcessor(processorId)
+	if err != nil {
+		return false, fmt.Errorf("Error testing existence of Processor: %s", processorId)
+	}
+
+	exists := nil != processor
+	if !exists {
+		log.Printf("[INFO] Processor %s no longer exists, removing from state...", processorId)
+		d.SetId("")
+	}
+
+	return exists, nil
+}
+
+// Schema Helpers
+
+func ProcessorFromSchema(d *schema.ResourceData, processor *Processor) error {
 	v := d.Get("component").([]interface{})
 	if len(v) != 1 {
 		return fmt.Errorf("Exactly one component is required")
@@ -132,32 +207,10 @@ func ResourceProcessorCreate(d *schema.ResourceData, meta interface{}) error {
 	}
 	processor.Component.Config.AutoTerminatedRelationships = autoTerminatedRelationships
 
-	_, err := client.CreateProcessor(&processor)
-	if err != nil {
-		return err
-	}
-
-	d.SetId(processor.Component.Id)
-
-	return ResourceProcessorRead(d, meta)
-}
-
-func ResourceProcessorRead(d *schema.ResourceData, meta interface{}) error {
-	// TODO:
 	return nil
 }
 
-func ResourceProcessorUpdate(d *schema.ResourceData, meta interface{}) error {
+func ProcessorToSchema(d *schema.ResourceData, processor *Processor) error {
 	// TODO:
 	return nil
-}
-
-func ResourceProcessorDelete(d *schema.ResourceData, meta interface{}) error {
-	// TODO:
-	return nil
-}
-
-func ResourceProcessorExists(d *schema.ResourceData, meta interface{}) (bool, error) {
-	// TODO:
-	return false, nil
 }
