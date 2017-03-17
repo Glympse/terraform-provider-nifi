@@ -73,31 +73,18 @@ func ResourceProcessGroupCreate(d *schema.ResourceData, meta interface{}) error 
 	processGroup := ProcessGroup{}
 	processGroup.Revision.Version = 0
 
-	v := d.Get("component").([]interface{})
-	if len(v) != 1 {
-		return fmt.Errorf("Exactly one component is required")
-	}
-	component := v[0].(map[string]interface{})
-
-	parentGroupId := component["parent_group_id"].(string)
-	processGroup.Component.ParentGroupId = parentGroupId
-	processGroup.Component.Name = component["name"].(string)
-
-	v = component["position"].([]interface{})
-	if len(v) != 1 {
-		return fmt.Errorf("Exactly one component.position is required")
-	}
-	position := v[0].(map[string]interface{})
-	processGroup.Component.Position.X = position["x"].(float64)
-	processGroup.Component.Position.Y = position["y"].(float64)
-
-	err := client.CreateProcessGroup(&processGroup)
+	err := ProcessGroupFromSchema(d, &processGroup)
 	if err != nil {
-		return err
+		return fmt.Errorf("Failed to parse Process Group schema")
+	}
+
+	err = client.CreateProcessGroup(&processGroup)
+	if err != nil {
+		return fmt.Errorf("Failed to create Process Group")
 	}
 
 	d.SetId(processGroup.Component.Id)
-	d.Set("parent_group_id", parentGroupId)
+	d.Set("parent_group_id", processGroup.Component.ParentGroupId)
 
 	return ResourceProcessGroupRead(d, meta)
 }
@@ -111,20 +98,10 @@ func ResourceProcessGroupRead(d *schema.ResourceData, meta interface{}) error {
 		return fmt.Errorf("Error retrieving Process Group: %s", processGroupId)
 	}
 
-	revision := []map[string]interface{}{{
-		"version": processGroup.Revision.Version,
-	}}
-	d.Set("revision", revision)
-
-	component := []map[string]interface{}{{
-		"parent_group_id": d.Get("parent_group_id").(string),
-		"name":            processGroup.Component.Name,
-		"position": []map[string]interface{}{{
-			"x": processGroup.Component.Position.X,
-			"y": processGroup.Component.Position.Y,
-		}},
-	}}
-	d.Set("component", component)
+	err = ProcessGroupToSchema(d, processGroup)
+	if err != nil {
+		return fmt.Errorf("Failed to serialize Process Group: %s", processGroupId)
+	}
 
 	return nil
 }
@@ -138,23 +115,10 @@ func ResourceProcessGroupUpdate(d *schema.ResourceData, meta interface{}) error 
 		return fmt.Errorf("Error retrieving Process Group: %s", processGroupId)
 	}
 
-	v := d.Get("component").([]interface{})
-	if len(v) != 1 {
-		return fmt.Errorf("Exactly one component is required")
+	err = ProcessGroupFromSchema(d, processGroup)
+	if err != nil {
+		return fmt.Errorf("Failed to parse Process Group schema: %s", processGroupId)
 	}
-	component := v[0].(map[string]interface{})
-
-	parentGroupId := component["parent_group_id"].(string)
-	processGroup.Component.ParentGroupId = parentGroupId
-	processGroup.Component.Name = component["name"].(string)
-
-	v = component["position"].([]interface{})
-	if len(v) != 1 {
-		return fmt.Errorf("Exactly one component.position is required")
-	}
-	position := v[0].(map[string]interface{})
-	processGroup.Component.Position.X = position["x"].(float64)
-	processGroup.Component.Position.Y = position["y"].(float64)
 
 	err = client.UpdateProcessGroup(processGroup)
 	if err != nil {
@@ -194,4 +158,47 @@ func ResourceProcessGroupExists(d *schema.ResourceData, meta interface{}) (bool,
 	}
 
 	return exists, nil
+}
+
+// Schema Helpers
+
+func ProcessGroupFromSchema(d *schema.ResourceData, processGroup *ProcessGroup) error {
+	v := d.Get("component").([]interface{})
+	if len(v) != 1 {
+		return fmt.Errorf("Exactly one component is required")
+	}
+	component := v[0].(map[string]interface{})
+
+	parentGroupId := component["parent_group_id"].(string)
+	processGroup.Component.ParentGroupId = parentGroupId
+	processGroup.Component.Name = component["name"].(string)
+
+	v = component["position"].([]interface{})
+	if len(v) != 1 {
+		return fmt.Errorf("Exactly one component.position is required")
+	}
+	position := v[0].(map[string]interface{})
+	processGroup.Component.Position.X = position["x"].(float64)
+	processGroup.Component.Position.Y = position["y"].(float64)
+
+	return nil
+}
+
+func ProcessGroupToSchema(d *schema.ResourceData, processGroup *ProcessGroup) error {
+	revision := []map[string]interface{}{{
+		"version": processGroup.Revision.Version,
+	}}
+	d.Set("revision", revision)
+
+	component := []map[string]interface{}{{
+		"parent_group_id": d.Get("parent_group_id").(string),
+		"name":            processGroup.Component.Name,
+		"position": []map[string]interface{}{{
+			"x": processGroup.Component.Position.X,
+			"y": processGroup.Component.Position.Y,
+		}},
+	}}
+	d.Set("component", component)
+
+	return nil
 }
