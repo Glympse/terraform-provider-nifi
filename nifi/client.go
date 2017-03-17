@@ -109,6 +109,13 @@ func (c *Client) GetProcessGroup(processGroupId string) (*ProcessGroup, error) {
 	return &processGroup, nil
 }
 
+func (c *Client) UpdateProcessGroup(processGroup *ProcessGroup) error {
+	url := fmt.Sprintf("http://%s/%s/process-groups/%s",
+		c.Config.Host, c.Config.ApiPath, processGroup.Component.Id)
+	err := c.JsonCall("PUT", url, processGroup, processGroup)
+	return err
+}
+
 func (c *Client) DeleteProcessGroup(processGroupId string) error {
 	url := fmt.Sprintf("http://%s/%s/process-groups/%s",
 		c.Config.Host, c.Config.ApiPath, processGroupId)

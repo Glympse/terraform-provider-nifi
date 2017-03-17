@@ -33,6 +33,11 @@ func TestClientProcessGroupCreate(t *testing.T) {
 
 	assert.Equal(t, err, nil)
 	assert.NotEmpty(t, processGroup2.Component.Id)
+
+	processGroup.Component.Name = "kafka_to_s3_1"
+	err = client.UpdateProcessGroup(&processGroup)
+
+	assert.Equal(t, err, nil)
 }
 
 func TestClientProcessorCreate(t *testing.T) {

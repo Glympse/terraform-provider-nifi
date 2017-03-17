@@ -15,6 +15,22 @@ func ResourceProcessGroup() *schema.Resource {
 		Exists: ResourceProcessGroupExists,
 
 		Schema: map[string]*schema.Schema{
+			"parent_group_id": {
+				Type:     schema.TypeString,
+				Computed: true,
+			},
+			"revision": {
+				Type:     schema.TypeList,
+				Computed: true,
+				Elem: &schema.Resource{
+					Schema: map[string]*schema.Schema{
+						"version": {
+							Type:     schema.TypeInt,
+							Computed: true,
+						},
+					},
+				},
+			},
 			"component": {
 				Type:     schema.TypeList,
 				Required: true,
@@ -81,6 +97,7 @@ func ResourceProcessGroupCreate(d *schema.ResourceData, meta interface{}) error 
 	}
 
 	d.SetId(processGroup.Component.Id)
+	d.Set("parent_group_id", parentGroupId)
 
 	return ResourceProcessGroupRead(d, meta)
 }
@@ -100,7 +117,7 @@ func ResourceProcessGroupRead(d *schema.ResourceData, meta interface{}) error {
 	d.Set("revision", revision)
 
 	component := []map[string]interface{}{{
-		"parent_group_id": processGroup.Component.ParentGroupId,
+		"parent_group_id": d.Get("parent_group_id").(string),
 		"name":            processGroup.Component.Name,
 		"position": []map[string]interface{}{{
 			"x": processGroup.Component.Position.X,
@@ -113,8 +130,38 @@ func ResourceProcessGroupRead(d *schema.ResourceData, meta interface{}) error {
 }
 
 func ResourceProcessGroupUpdate(d *schema.ResourceData, meta interface{}) error {
-	// TODO:
-	return nil
+	processGroupId := d.Id()
+
+	client := meta.(*Client)
+	processGroup, err := client.GetProcessGroup(processGroupId)
+	if err != nil {
+		return fmt.Errorf("Error retrieving Process Group: %s", processGroupId)
+	}
+
+	v := d.Get("component").([]interface{})
+	if len(v) != 1 {
+		return fmt.Errorf("Exactly one component is required")
+	}
+	component := v[0].(map[string]interface{})
+
+	parentGroupId := component["parent_group_id"].(string)
+	processGroup.Component.ParentGroupId = parentGroupId
+	processGroup.Component.Name = component["name"].(string)
+
+	v = component["position"].([]interface{})
+	if len(v) != 1 {
+		return fmt.Errorf("Exactly one component.position is required")
+	}
+	position := v[0].(map[string]interface{})
+	processGroup.Component.Position.X = position["x"].(float64)
+	processGroup.Component.Position.Y = position["y"].(float64)
+
+	err = client.UpdateProcessGroup(processGroup)
+	if err != nil {
+		return fmt.Errorf("Failed to update Process Group: %s", processGroupId)
+	}
+
+	return ResourceProcessGroupRead(d, meta)
 }
 
 func ResourceProcessGroupDelete(d *schema.ResourceData, meta interface{}) error {
