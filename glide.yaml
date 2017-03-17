@@ -1,0 +1,10 @@
+package: github.com/glympse/terraform-provider-nifi
+excludeDirs:
+- examples
+import:
+- package: github.com/hashicorp/terraform
+  vcs: git
+  ref: v0.9.0
+- package: github.com/stretchr/testify
+  vcs: git
+  ref: v1.1.4
