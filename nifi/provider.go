@@ -23,7 +23,8 @@ func Provider() terraform.ResourceProvider {
 		},
 
 		ResourcesMap: map[string]*schema.Resource{
-			"nifi_processor":     resourceNifiProcessor(),
+			"nifi_processor":  ResourceProcessor(),
+			"nifi_connection": ResourceConnection(),
 		},
 
 		ConfigureFunc: providerConfigure,
@@ -32,8 +33,8 @@ func Provider() terraform.ResourceProvider {
 
 func providerConfigure(d *schema.ResourceData) (interface{}, error) {
 	config := Config{
-		Host:               d.Get("host").(string),
-		ApiPath:            d.Get("api_path").(string),
+		Host:    d.Get("host").(string),
+		ApiPath: d.Get("api_path").(string),
 	}
 	client := NewClient(config)
 	return client, nil

@@ -18,16 +18,42 @@ func NewClient(config Config) *Client {
 	}
 }
 
-// Processor section
+// Common section
 
-type ProcessorRevision struct {
+type Revision struct {
 	Version int `json:"version"`
 }
 
-type ProcessorPosition struct {
+type Position struct {
 	X float64 `json:"x"`
 	Y float64 `json:"y"`
 }
+
+func (c *Client) PostCall(url string, bodyIn interface{}, bodyOut interface{}) (error) {
+	requestBody := new(bytes.Buffer)
+	json.NewEncoder(requestBody).Encode(bodyIn)
+
+	request, err := http.NewRequest("POST", url, requestBody)
+	if err != nil {
+		return err
+	}
+	request.Header.Add("Content-Type", "application/json; charset=utf-8")
+
+	response, err := c.Client.Do(request)
+	if err != nil {
+		return err
+	}
+	defer response.Body.Close()
+
+	err = json.NewDecoder(response.Body).Decode(bodyOut)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// Processor section
 
 type ProcessorConfig struct {
 	Properties                  map[string]string `json:"properties"`
@@ -35,16 +61,16 @@ type ProcessorConfig struct {
 }
 
 type ProcessorComponent struct {
-	Id            string            `json:"id,omitempty"`
-	ParentGroupId string            `json:"parentGroupId"`
-	Name          string            `json:"name"`
-	Type          string            `json:"type"`
-	Position      ProcessorPosition `json:"position"`
-	Config        ProcessorConfig   `json:"config"`
+	Id            string          `json:"id,omitempty"`
+	ParentGroupId string          `json:"parentGroupId"`
+	Name          string          `json:"name"`
+	Type          string          `json:"type"`
+	Position      Position        `json:"position"`
+	Config        ProcessorConfig `json:"config"`
 }
 
 type Processor struct {
-	Revision  ProcessorRevision  `json:"revision"`
+	Revision  Revision           `json:"revision"`
 	Component ProcessorComponent `json:"component"`
 }
 
@@ -74,4 +100,39 @@ func (c *Client) CreateProcessor(processor *Processor) (string, error) {
 	processor.Component.Id = result.Component.Id
 
 	return processor.Component.Id, nil
+}
+
+// Connection section
+
+type ConnectionHand struct {
+	Type string `json:"type"`
+	Id   string `json:"id"`
+}
+
+type ConnectionComponent struct {
+	Id                    string         `json:"id,omitempty"`
+	ParentGroupId         string         `json:"parentGroupId"`
+	Source                ConnectionHand `json:"source"`
+	Destination           ConnectionHand `json:"destination"`
+	SelectedRelationships []string       `json:"selectedRelationships"`
+	Bends                 []Position     `json:"bends"`
+}
+
+type Connection struct {
+	Revision  Revision            `json:"revision"`
+	Component ConnectionComponent `json:"component"`
+}
+
+func (c *Client) CreateConnection(connection *Connection) (string, error) {
+	url := "http://" + c.Config.Host + "/" + c.Config.ApiPath + "/process-groups/" + connection.Component.ParentGroupId + "/connections"
+
+	result := Connection{}
+	err := c.PostCall(url, connection, &result)
+	if err != nil {
+		return "", err
+	}
+
+	connection.Component.Id = result.Component.Id
+
+	return connection.Component.Id, nil
 }

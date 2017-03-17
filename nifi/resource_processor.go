@@ -5,7 +5,7 @@ import (
 	"github.com/hashicorp/terraform/helper/schema"
 )
 
-func resourceNifiProcessor() *schema.Resource {
+func ResourceProcessor() *schema.Resource {
 	return &schema.Resource{
 		Create: ResourceProcessorCreate,
 		Read:   ResourceProcessorRead,
