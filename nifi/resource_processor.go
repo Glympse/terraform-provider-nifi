@@ -22,7 +22,10 @@ func ResourceProcessor() *schema.Resource {
 				Required: true,
 				Elem: &schema.Resource{
 					Schema: map[string]*schema.Schema{
-						"parent_group_id": SchemaParentGroupId(),
+						"parent_group_id": {
+							Type:     schema.TypeString,
+							Required: true,
+						},
 						"name": {
 							Type:     schema.TypeString,
 							Required: true,
@@ -211,6 +214,33 @@ func ProcessorFromSchema(d *schema.ResourceData, processor *Processor) error {
 }
 
 func ProcessorToSchema(d *schema.ResourceData, processor *Processor) error {
-	// TODO:
+	revision := []map[string]interface{}{{
+		"version": processor.Revision.Version,
+	}}
+	d.Set("revision", revision)
+
+	relationships := []interface{}{}
+	for _, v := range processor.Component.Config.AutoTerminatedRelationships {
+		relationships = append(relationships, v)
+	}
+
+	component := []map[string]interface{}{{
+		"parent_group_id": d.Get("parent_group_id").(string),
+		"name":            processor.Component.Name,
+		"type":            processor.Component.Type,
+		"position": []map[string]interface{}{{
+			"x": processor.Component.Position.X,
+			"y": processor.Component.Position.Y,
+		}},
+		"config": []map[string]interface{}{{
+			"concurrently_schedulable_task_count": processor.Component.Config.ConcurrentlySchedulableTaskCount,
+			"scheduling_strategy":                 processor.Component.Config.SchedulingStrategy,
+			"scheduling_period":                   processor.Component.Config.SchedulingPeriod,
+			"properties":                          processor.Component.Config.Properties,
+			"auto_terminated_relationships":       relationships,
+		}},
+	}}
+	d.Set("component", component)
+
 	return nil
 }

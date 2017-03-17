@@ -4,8 +4,8 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"net/http"
 	"io"
+	"net/http"
 )
 
 type Client struct {
@@ -114,6 +114,11 @@ func (c *Client) DeleteProcessGroup(processGroupId string) error {
 
 // Processor section
 
+type ProcessorRelationship struct {
+	Name          string `json:"name"`
+	AutoTerminate bool   `json:"autoTerminate"`
+}
+
 type ProcessorConfig struct {
 	SchedulingStrategy               string `json:"schedulingStrategy"`
 	SchedulingPeriod                 string `json:"schedulingPeriod"`
@@ -124,12 +129,13 @@ type ProcessorConfig struct {
 }
 
 type ProcessorComponent struct {
-	Id            string          `json:"id,omitempty"`
-	ParentGroupId string          `json:"parentGroupId"`
-	Name          string          `json:"name"`
-	Type          string          `json:"type"`
-	Position      Position        `json:"position"`
-	Config        ProcessorConfig `json:"config"`
+	Id            string                  `json:"id,omitempty"`
+	ParentGroupId string                  `json:"parentGroupId"`
+	Name          string                  `json:"name"`
+	Type          string                  `json:"type"`
+	Position      Position                `json:"position"`
+	Config        ProcessorConfig         `json:"config"`
+	Relationships []ProcessorRelationship `json:"relationships"`
 }
 
 type Processor struct {
@@ -149,6 +155,15 @@ func (c *Client) GetProcessor(processorId string) (*Processor, error) {
 		c.Config.Host, c.Config.ApiPath, processorId)
 	processor := Processor{}
 	err := c.JsonCall("GET", url, nil, &processor)
+
+	relationships := []string{}
+	for _, v := range processor.Component.Relationships {
+		if v.AutoTerminate {
+			relationships = append(relationships, v.Name)
+		}
+	}
+	processor.Component.Config.AutoTerminatedRelationships = relationships
+
 	if err != nil {
 		return nil, err
 	}

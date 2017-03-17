@@ -16,13 +16,16 @@ func ResourceProcessGroup() *schema.Resource {
 
 		Schema: map[string]*schema.Schema{
 			"parent_group_id": SchemaParentGroupId(),
-			"revision": SchemaRevision(),
+			"revision":        SchemaRevision(),
 			"component": {
 				Type:     schema.TypeList,
 				Required: true,
 				Elem: &schema.Resource{
 					Schema: map[string]*schema.Schema{
-						"parent_group_id": SchemaParentGroupId(),
+						"parent_group_id": {
+							Type:     schema.TypeString,
+							Required: true,
+						},
 						"name": {
 							Type:     schema.TypeString,
 							Required: true,
@@ -45,6 +48,7 @@ func ResourceProcessGroupCreate(d *schema.ResourceData, meta interface{}) error 
 	if err != nil {
 		return fmt.Errorf("Failed to parse Process Group schema")
 	}
+	parentGroupId := processGroup.Component.ParentGroupId
 
 	err = client.CreateProcessGroup(&processGroup)
 	if err != nil {
@@ -52,7 +56,7 @@ func ResourceProcessGroupCreate(d *schema.ResourceData, meta interface{}) error 
 	}
 
 	d.SetId(processGroup.Component.Id)
-	d.Set("parent_group_id", processGroup.Component.ParentGroupId)
+	d.Set("parent_group_id", parentGroupId)
 
 	return ResourceProcessGroupRead(d, meta)
 }
