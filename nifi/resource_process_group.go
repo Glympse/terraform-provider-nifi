@@ -1,8 +1,9 @@
 package nifi
 
 import (
-	"github.com/hashicorp/terraform/helper/schema"
 	"fmt"
+	"github.com/hashicorp/terraform/helper/schema"
+	"log"
 )
 
 func ResourceProcessGroup() *schema.Resource {
@@ -61,7 +62,9 @@ func ResourceProcessGroupCreate(d *schema.ResourceData, meta interface{}) error 
 		return fmt.Errorf("Exactly one component is required")
 	}
 	component := v[0].(map[string]interface{})
-	processGroup.Component.ParentGroupId = component["parent_group_id"].(string)
+
+	parentGroupId := component["parent_group_id"].(string)
+	processGroup.Component.ParentGroupId = parentGroupId
 	processGroup.Component.Name = component["name"].(string)
 
 	v = component["position"].([]interface{})
@@ -72,7 +75,7 @@ func ResourceProcessGroupCreate(d *schema.ResourceData, meta interface{}) error 
 	processGroup.Component.Position.X = position["x"].(float64)
 	processGroup.Component.Position.Y = position["y"].(float64)
 
-	_, err := client.CreateProcessGroup(&processGroup)
+	err := client.CreateProcessGroup(&processGroup)
 	if err != nil {
 		return err
 	}
@@ -83,7 +86,29 @@ func ResourceProcessGroupCreate(d *schema.ResourceData, meta interface{}) error 
 }
 
 func ResourceProcessGroupRead(d *schema.ResourceData, meta interface{}) error {
-	// TODO:
+	processGroupId := d.Id()
+
+	client := meta.(*Client)
+	processGroup, err := client.GetProcessGroup(processGroupId)
+	if err != nil {
+		return fmt.Errorf("Error retrieving Process Group: %s", processGroupId)
+	}
+
+	revision := []map[string]interface{}{{
+		"version": processGroup.Revision.Version,
+	}}
+	d.Set("revision", revision)
+
+	component := []map[string]interface{}{{
+		"parent_group_id": processGroup.Component.ParentGroupId,
+		"name":            processGroup.Component.Name,
+		"position": []map[string]interface{}{{
+			"x": processGroup.Component.Position.X,
+			"y": processGroup.Component.Position.Y,
+		}},
+	}}
+	d.Set("component", component)
+
 	return nil
 }
 
@@ -93,11 +118,33 @@ func ResourceProcessGroupUpdate(d *schema.ResourceData, meta interface{}) error 
 }
 
 func ResourceProcessGroupDelete(d *schema.ResourceData, meta interface{}) error {
-	// TODO:
+	processGroupId := d.Id()
+	log.Printf("[INFO] Deleting Process Group: %s", processGroupId)
+
+	client := meta.(*Client)
+	err := client.DeleteProcessGroup(processGroupId)
+	if err != nil {
+		return fmt.Errorf("Error deleting Process Group: %s", processGroupId)
+	}
+
+	d.SetId("")
 	return nil
 }
 
 func ResourceProcessGroupExists(d *schema.ResourceData, meta interface{}) (bool, error) {
-	// TODO:
-	return false, nil
+	processGroupId := d.Id()
+
+	client := meta.(*Client)
+	processGroup, err := client.GetProcessGroup(processGroupId)
+	if err != nil {
+		return false, fmt.Errorf("Error testing existence of Process Group: %s", processGroupId)
+	}
+
+	exists := nil != processGroup
+	if !exists {
+		log.Printf("[INFO] Process Group %s no longer exists, removing from state...", processGroupId)
+		d.SetId("")
+	}
+
+	return exists, nil
 }

@@ -3,6 +3,7 @@ package nifi
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"net/http"
 )
 
@@ -29,25 +30,48 @@ type Position struct {
 	Y float64 `json:"y"`
 }
 
-func (c *Client) PostCall(url string, bodyIn interface{}, bodyOut interface{}) error {
-	requestBody := new(bytes.Buffer)
-	json.NewEncoder(requestBody).Encode(bodyIn)
+func (c *Client) EncodeObject(obj interface{}) *bytes.Buffer {
+	if obj != nil {
+		buffer := new(bytes.Buffer)
+		json.NewEncoder(buffer).Encode(obj)
+		return buffer
+	} else {
+		return nil
+	}
+}
 
-	request, err := http.NewRequest("POST", url, requestBody)
+func (c *Client) JsonCall(method string, url string, bodyIn interface{}, bodyOut interface{}) error {
+	var request *http.Request
+	var err error
+	if bodyIn != nil {
+		requestBody := new(bytes.Buffer)
+		json.NewEncoder(requestBody).Encode(bodyIn)
+		request, err = http.NewRequest(method, url, requestBody)
+	} else {
+		request, err = http.NewRequest(method, url, nil)
+	}
 	if err != nil {
 		return err
 	}
-	request.Header.Add("Content-Type", "application/json; charset=utf-8")
+
+	if bodyIn != nil {
+		request.Header.Add("Content-Type", "application/json; charset=utf-8")
+	}
 
 	response, err := c.Client.Do(request)
 	if err != nil {
 		return err
 	}
+	if response.StatusCode >= 300 {
+		return fmt.Errorf("The call has failed with the code of %d", response.StatusCode)
+	}
 	defer response.Body.Close()
 
-	err = json.NewDecoder(response.Body).Decode(bodyOut)
-	if err != nil {
-		return err
+	if bodyOut != nil {
+		err = json.NewDecoder(response.Body).Decode(bodyOut)
+		if err != nil {
+			return err
+		}
 	}
 
 	return nil
@@ -67,18 +91,29 @@ type ProcessGroup struct {
 	Component ProcessGroupComponent `json:"component"`
 }
 
-func (c *Client) CreateProcessGroup(processGroup *ProcessGroup) (string, error) {
-	url := "http://" + c.Config.Host + "/" + c.Config.ApiPath + "/process-groups/" + processGroup.Component.ParentGroupId + "/process-groups"
+func (c *Client) CreateProcessGroup(processGroup *ProcessGroup) error {
+	url := fmt.Sprintf("http://%s/%s/process-groups/%s/process-groups",
+		c.Config.Host, c.Config.ApiPath, processGroup.Component.ParentGroupId)
+	err := c.JsonCall("POST", url, processGroup, processGroup)
+	return err
+}
 
-	result := ProcessGroup{}
-	err := c.PostCall(url, processGroup, &result)
+func (c *Client) GetProcessGroup(processGroupId string) (*ProcessGroup, error) {
+	url := fmt.Sprintf("http://%s/%s/process-groups/%s",
+		c.Config.Host, c.Config.ApiPath, processGroupId)
+	processGroup := ProcessGroup{}
+	err := c.JsonCall("GET", url, nil, &processGroup)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
+	return &processGroup, nil
+}
 
-	processGroup.Component.Id = result.Component.Id
-
-	return processGroup.Component.Id, nil
+func (c *Client) DeleteProcessGroup(processGroupId string) error {
+	url := fmt.Sprintf("http://%s/%s/process-groups/%s",
+		c.Config.Host, c.Config.ApiPath, processGroupId)
+	err := c.JsonCall("DELETE", url, nil, nil)
+	return err
 }
 
 // Processor section
@@ -110,7 +145,7 @@ func (c *Client) CreateProcessor(processor *Processor) (string, error) {
 	url := "http://" + c.Config.Host + "/" + c.Config.ApiPath + "/process-groups/" + processor.Component.ParentGroupId + "/processors"
 
 	result := Processor{}
-	err := c.PostCall(url, processor, &result)
+	err := c.JsonCall("POST", url, processor, &result)
 	if err != nil {
 		return "", err
 	}
@@ -145,7 +180,7 @@ func (c *Client) CreateConnection(connection *Connection) (string, error) {
 	url := "http://" + c.Config.Host + "/" + c.Config.ApiPath + "/process-groups/" + connection.Component.ParentGroupId + "/connections"
 
 	result := Connection{}
-	err := c.PostCall(url, connection, &result)
+	err := c.JsonCall("POST", url, connection, &result)
 	if err != nil {
 		return "", err
 	}

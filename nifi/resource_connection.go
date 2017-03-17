@@ -1,8 +1,8 @@
 package nifi
 
 import (
-	"github.com/hashicorp/terraform/helper/schema"
 	"fmt"
+	"github.com/hashicorp/terraform/helper/schema"
 )
 
 func ResourceConnection() *schema.Resource {
@@ -63,7 +63,7 @@ func ResourceConnection() *schema.Resource {
 						"bends": {
 							Type:     schema.TypeList,
 							Optional: true,
-							Elem:	  &schema.Resource{
+							Elem: &schema.Resource{
 								Schema: map[string]*schema.Schema{
 									"x": {
 										Type:     schema.TypeFloat,
