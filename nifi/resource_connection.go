@@ -3,6 +3,7 @@ package nifi
 import (
 	"fmt"
 	"github.com/hashicorp/terraform/helper/schema"
+	"log"
 )
 
 func ResourceConnection() *schema.Resource {
@@ -14,6 +15,8 @@ func ResourceConnection() *schema.Resource {
 		Exists: ResourceConnectionExists,
 
 		Schema: map[string]*schema.Schema{
+			"parent_group_id": SchemaParentGroupId(),
+			"revision":        SchemaRevision(),
 			"component": {
 				Type:     schema.TypeList,
 				Required: true,
@@ -84,11 +87,103 @@ func ResourceConnection() *schema.Resource {
 }
 
 func ResourceConnectionCreate(d *schema.ResourceData, meta interface{}) error {
-	client := meta.(*Client)
-
 	connection := Connection{}
 	connection.Revision.Version = 0
 
+	err := ConnectionFromSchema(d, &connection)
+	if err != nil {
+		return fmt.Errorf("Failed to parse Connection schema")
+	}
+	parentGroupId := connection.Component.ParentGroupId
+
+	client := meta.(*Client)
+	err = client.CreateConnection(&connection)
+	if err != nil {
+		return fmt.Errorf("Failed to create Connection")
+	}
+
+	d.SetId(connection.Component.Id)
+	d.Set("parent_group_id", parentGroupId)
+
+	return ResourceConnectionRead(d, meta)
+}
+
+func ResourceConnectionRead(d *schema.ResourceData, meta interface{}) error {
+	connectionId := d.Id()
+
+	client := meta.(*Client)
+	connection, err := client.GetConnection(connectionId)
+	if err != nil {
+		return fmt.Errorf("Error retrieving Connection: %s", connectionId)
+	}
+
+	err = ConnectionToSchema(d, connection)
+	if err != nil {
+		return fmt.Errorf("Failed to serialize Connection: %s", connectionId)
+	}
+
+	return nil
+}
+
+func ResourceConnectionUpdate(d *schema.ResourceData, meta interface{}) error {
+	connectionId := d.Id()
+
+	client := meta.(*Client)
+	connection, err := client.GetConnection(connectionId)
+	if err != nil {
+		return fmt.Errorf("Error retrieving Connection: %s", connectionId)
+	}
+
+	err = ConnectionFromSchema(d, connection)
+	if err != nil {
+		return fmt.Errorf("Failed to parse Connection schema: %s", connectionId)
+	}
+
+	err = client.UpdateConnection(connection)
+	if err != nil {
+		return fmt.Errorf("Failed to update Connection: %s", connectionId)
+	}
+
+	return ResourceConnectionRead(d, meta)
+}
+
+func ResourceConnectionDelete(d *schema.ResourceData, meta interface{}) error {
+	connectionId := d.Id()
+	log.Printf("[INFO] Deleting Connection: %s", connectionId)
+
+	client := meta.(*Client)
+	// TODO: Purge connection
+
+	err := client.DeleteConnection(connectionId)
+	if err != nil {
+		return fmt.Errorf("Error deleting Connection: %s", connectionId)
+	}
+
+	d.SetId("")
+	return nil
+}
+
+func ResourceConnectionExists(d *schema.ResourceData, meta interface{}) (bool, error) {
+	connectionId := d.Id()
+
+	client := meta.(*Client)
+	connection, err := client.GetConnection(connectionId)
+	if err != nil {
+		return false, fmt.Errorf("Error testing existence of Connection: %s", connectionId)
+	}
+
+	exists := nil != connection
+	if !exists {
+		log.Printf("[INFO] Connection %s no longer exists, removing from state...", connectionId)
+		d.SetId("")
+	}
+
+	return exists, nil
+}
+
+// Schema Helpers
+
+func ConnectionFromSchema(d *schema.ResourceData, connection *Connection) error {
 	v := d.Get("component").([]interface{})
 	if len(v) != 1 {
 		return fmt.Errorf("Exactly one component is required")
@@ -132,32 +227,42 @@ func ResourceConnectionCreate(d *schema.ResourceData, meta interface{}) error {
 		connection.Component.Bends = bends
 	}
 
-	err := client.CreateConnection(&connection)
-	if err != nil {
-		return err
+	return nil
+}
+
+func ConnectionToSchema(d *schema.ResourceData, connection *Connection) error {
+	revision := []map[string]interface{}{{
+		"version": connection.Revision.Version,
+	}}
+	d.Set("revision", revision)
+
+	relationships := []interface{}{}
+	for _, v := range connection.Component.SelectedRelationships {
+		relationships = append(relationships, v)
 	}
 
-	d.SetId(connection.Component.Id)
+	bends := []interface{}{}
+	for _, v := range connection.Component.Bends {
+		bends = append(bends, map[string]interface{} {
+			"x": v.X,
+			"y": v.Y,
+		})
+	}
 
-	return ResourceConnectionRead(d, meta)
-}
+	component := []map[string]interface{}{{
+		"parent_group_id": d.Get("parent_group_id").(string),
+		"source": []map[string]interface{}{{
+			"type": connection.Component.Source.Type,
+			"id": connection.Component.Source.Id,
+		}},
+		"destination": []map[string]interface{}{{
+			"type": connection.Component.Destination.Type,
+			"id": connection.Component.Destination.Id,
+		}},
+		"selected_relationships": relationships,
+		"bends": bends,
+	}}
+	d.Set("component", component)
 
-func ResourceConnectionRead(d *schema.ResourceData, meta interface{}) error {
-	// TODO:
 	return nil
-}
-
-func ResourceConnectionUpdate(d *schema.ResourceData, meta interface{}) error {
-	// TODO:
-	return nil
-}
-
-func ResourceConnectionDelete(d *schema.ResourceData, meta interface{}) error {
-	// TODO:
-	return nil
-}
-
-func ResourceConnectionExists(d *schema.ResourceData, meta interface{}) (bool, error) {
-	// TODO:
-	return false, nil
 }

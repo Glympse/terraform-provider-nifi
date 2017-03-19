@@ -39,8 +39,6 @@ func ResourceProcessGroup() *schema.Resource {
 }
 
 func ResourceProcessGroupCreate(d *schema.ResourceData, meta interface{}) error {
-	client := meta.(*Client)
-
 	processGroup := ProcessGroup{}
 	processGroup.Revision.Version = 0
 
@@ -50,6 +48,7 @@ func ResourceProcessGroupCreate(d *schema.ResourceData, meta interface{}) error 
 	}
 	parentGroupId := processGroup.Component.ParentGroupId
 
+	client := meta.(*Client)
 	err = client.CreateProcessGroup(&processGroup)
 	if err != nil {
 		return fmt.Errorf("Failed to create Process Group")

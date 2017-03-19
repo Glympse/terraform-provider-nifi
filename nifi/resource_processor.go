@@ -75,8 +75,6 @@ func ResourceProcessor() *schema.Resource {
 }
 
 func ResourceProcessorCreate(d *schema.ResourceData, meta interface{}) error {
-	client := meta.(*Client)
-
 	processor := Processor{}
 	processor.Revision.Version = 0
 
@@ -84,14 +82,16 @@ func ResourceProcessorCreate(d *schema.ResourceData, meta interface{}) error {
 	if err != nil {
 		return fmt.Errorf("Failed to parse Processor schema")
 	}
+	parentGroupId := processor.Component.ParentGroupId
 
+	client := meta.(*Client)
 	err = client.CreateProcessor(&processor)
 	if err != nil {
 		return fmt.Errorf("Failed to create Processor")
 	}
 
 	d.SetId(processor.Component.Id)
-	d.Set("parent_group_id", processor.Component.ParentGroupId)
+	d.Set("parent_group_id", parentGroupId)
 
 	return ResourceProcessorRead(d, meta)
 }
