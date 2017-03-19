@@ -7,6 +7,6 @@ set -e
 # Register the plugin
 cat > ~/.terraformrc <<EOL
 providers {
-   nifi = "$GOPATH/src/github.com/glympse/terraform-provider-nifi/bin/macosx/terraforn-provider-nifi"
+   nifi = "$GOPATH/src/github.com/glympse/terraform-provider-nifi/bin/local/terraforn-provider-nifi"
 }
 EOL

@@ -219,6 +219,13 @@ func ProcessorToSchema(d *schema.ResourceData, processor *Processor) error {
 	}}
 	d.Set("revision", revision)
 
+	properties := map[string]interface{}{}
+	for k, v := range processor.Component.Config.Properties {
+		if v != "" {
+			properties[k] = v
+		}
+	}
+
 	relationships := []interface{}{}
 	for _, v := range processor.Component.Config.AutoTerminatedRelationships {
 		relationships = append(relationships, v)
@@ -236,7 +243,7 @@ func ProcessorToSchema(d *schema.ResourceData, processor *Processor) error {
 			"concurrently_schedulable_task_count": processor.Component.Config.ConcurrentlySchedulableTaskCount,
 			"scheduling_strategy":                 processor.Component.Config.SchedulingStrategy,
 			"scheduling_period":                   processor.Component.Config.SchedulingPeriod,
-			"properties":                          processor.Component.Config.Properties,
+			"properties":                          properties,
 			"auto_terminated_relationships":       relationships,
 		}},
 	}}

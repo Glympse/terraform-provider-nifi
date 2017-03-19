@@ -36,6 +36,8 @@ resource "nifi_processor" "consume_kafka" {
         "auto.offset.reset" = "${var.kafka_offset_reset}"
         "key-attribute-encoding" = "utf-8"
         "max.poll.records" = "${var.kafka_max_poll_records}"
+        "max-uncommit-offset-wait" = "1 secs"
+        "message-demarcator" = "\n"
       }
 
       auto_terminated_relationships = []
@@ -60,6 +62,7 @@ resource "nifi_processor" "merge_content" {
         "Merge Format" = "Binary Concatenation"
         "Attribute Strategy" = "Keep Only Common Attributes"
         "Minimum Number of Entries" = "1"
+        "Maximum Number of Entries" = "1000"
         "Minimum Group Size" = "10 MB"
         "Maximum Group Size" = "12 MB"
         "Max Bin Age" = "1 hour"
@@ -120,6 +123,14 @@ resource "nifi_processor" "put_s3_object" {
         "Multipart Upload AgeOff Interval" = "60 min"
         "Multipart Upload Max Age Threshold" = "7 days"
         "server-side-encryption" = "None"
+        "Signer Override" = "Default Signature"
+        "FullControl User List" = "$${s3.permissions.full.users}"
+        "Owner" = "$${s3.owner}"
+        "Read ACL User List" = "$${s3.permissions.readacl.users}"
+        "Read Permission User List" = "$${s3.permissions.read.users}"
+        "Write ACL User List" = "$${s3.permissions.writeacl.users}"
+        "Write Permission User List" = "$${s3.permissions.write.users}"
+        "canned-acl" = "$${s3.permissions.cannedacl}"
       }
 
       auto_terminated_relationships = [

@@ -23,3 +23,13 @@ Argument | Required | Description
 ---|---|---
 **api_key** | Yes | NiFi host (including port). e.g. `localhost:8080`
 **api_path** | No | API path prefix. e.g. `nifi-api`
+
+## Requirements
+
+- Terraform 0.9
+
+## Known Limitations
+
+- Only Process Groups, Processors and Connection resources are supported. 
+- Parent group id can't be changed (on any of the resources).
+- Resources are never started or stopped.  

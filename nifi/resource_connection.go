@@ -151,9 +151,13 @@ func ResourceConnectionDelete(d *schema.ResourceData, meta interface{}) error {
 	connectionId := d.Id()
 	log.Printf("[INFO] Deleting Connection: %s", connectionId)
 
-	client := meta.(*Client)
-	// TODO: Purge connection
+	// NEXT: Live connections must be purged before it can be deleted. In most cases it is not desirable to do so
+	// as it leads to data loss. It can be achieved via the following call flow in cases when it is unavoidable:
+	// - POST /flowfile-queues/{id}/drop-requests
+	// - GET /flowfile-queues/{id}/drop-requests/{drop-request-id}
+	// - DELETE /flowfile-queues/{id}/drop-requests/{drop-request-id}
 
+	client := meta.(*Client)
 	err := client.DeleteConnection(connectionId)
 	if err != nil {
 		return fmt.Errorf("Error deleting Connection: %s", connectionId)

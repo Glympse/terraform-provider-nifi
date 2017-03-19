@@ -4,5 +4,6 @@ set -e
 # Install dependencies
 glide update
 
-mkdir -p ./bin/macosx/
-go build -o ./bin/macosx/terraforn-provider-nifi || exit 1
+# Build binary for local platform
+mkdir -p ./bin/local/
+go build -o ./bin/local/terraforn-provider-nifi || exit 1
