@@ -124,8 +124,8 @@ type ProcessorConfig struct {
 	SchedulingPeriod                 string `json:"schedulingPeriod"`
 	ConcurrentlySchedulableTaskCount int    `json:"concurrentlySchedulableTaskCount"`
 
-	Properties                  map[string]string `json:"properties"`
-	AutoTerminatedRelationships []string          `json:"autoTerminatedRelationships"`
+	Properties                  map[string]interface{} `json:"properties"`
+	AutoTerminatedRelationships []string               `json:"autoTerminatedRelationships"`
 }
 
 type ProcessorComponent struct {
@@ -143,10 +143,22 @@ type Processor struct {
 	Component ProcessorComponent `json:"component"`
 }
 
+func (c *Client) ProcessorCleanupNilProperties(processor *Processor) error {
+	properties := map[string]interface{}{}
+	for k, v := range processor.Component.Config.Properties {
+		if v != nil {
+			properties[k] = v
+		}
+	}
+	processor.Component.Config.Properties = properties
+	return nil
+}
+
 func (c *Client) CreateProcessor(processor *Processor) error {
 	url := fmt.Sprintf("http://%s/%s/process-groups/%s/processors",
 		c.Config.Host, c.Config.ApiPath, processor.Component.ParentGroupId)
 	err := c.JsonCall("POST", url, processor, processor)
+	c.ProcessorCleanupNilProperties(processor)
 	return err
 }
 
@@ -155,6 +167,8 @@ func (c *Client) GetProcessor(processorId string) (*Processor, error) {
 		c.Config.Host, c.Config.ApiPath, processorId)
 	processor := Processor{}
 	err := c.JsonCall("GET", url, nil, &processor)
+
+	c.ProcessorCleanupNilProperties(&processor)
 
 	relationships := []string{}
 	for _, v := range processor.Component.Relationships {
@@ -174,6 +188,7 @@ func (c *Client) UpdateProcessor(processor *Processor) error {
 	url := fmt.Sprintf("http://%s/%s/processors/%s",
 		c.Config.Host, c.Config.ApiPath, processor.Component.Id)
 	err := c.JsonCall("PUT", url, processor, processor)
+	c.ProcessorCleanupNilProperties(processor)
 	return err
 }
 

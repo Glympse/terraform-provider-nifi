@@ -247,7 +247,7 @@ func ConnectionToSchema(d *schema.ResourceData, connection *Connection) error {
 
 	bends := []interface{}{}
 	for _, v := range connection.Component.Bends {
-		bends = append(bends, map[string]interface{} {
+		bends = append(bends, map[string]interface{}{
 			"x": v.X,
 			"y": v.Y,
 		})
@@ -257,14 +257,14 @@ func ConnectionToSchema(d *schema.ResourceData, connection *Connection) error {
 		"parent_group_id": d.Get("parent_group_id").(string),
 		"source": []map[string]interface{}{{
 			"type": connection.Component.Source.Type,
-			"id": connection.Component.Source.Id,
+			"id":   connection.Component.Source.Id,
 		}},
 		"destination": []map[string]interface{}{{
 			"type": connection.Component.Destination.Type,
-			"id": connection.Component.Destination.Id,
+			"id":   connection.Component.Destination.Id,
 		}},
 		"selected_relationships": relationships,
-		"bends": bends,
+		"bends":                  bends,
 	}}
 	d.Set("component", component)
 

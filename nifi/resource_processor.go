@@ -116,6 +116,10 @@ func ResourceProcessorRead(d *schema.ResourceData, meta interface{}) error {
 func ResourceProcessorUpdate(d *schema.ResourceData, meta interface{}) error {
 	processorId := d.Id()
 
+	// NEXT: Compare new list of auto-terminated connections against the list of processors existing connections.
+	// It is not possible to auto-terminate a relationship if ae existing connection declares this relationship type.
+	// The issue can be resolved automatically via updating/removing the connection.
+
 	client := meta.(*Client)
 	processor, err := client.GetProcessor(processorId)
 	if err != nil {
@@ -197,7 +201,7 @@ func ProcessorFromSchema(d *schema.ResourceData, processor *Processor) error {
 	processor.Component.Config.SchedulingPeriod = config["scheduling_period"].(string)
 	processor.Component.Config.ConcurrentlySchedulableTaskCount = config["concurrently_schedulable_task_count"].(int)
 
-	processor.Component.Config.Properties = map[string]string{}
+	processor.Component.Config.Properties = map[string]interface{}{}
 	properties := config["properties"].(map[string]interface{})
 	for k, v := range properties {
 		processor.Component.Config.Properties[k] = v.(string)
@@ -219,13 +223,6 @@ func ProcessorToSchema(d *schema.ResourceData, processor *Processor) error {
 	}}
 	d.Set("revision", revision)
 
-	properties := map[string]interface{}{}
-	for k, v := range processor.Component.Config.Properties {
-		if v != "" {
-			properties[k] = v
-		}
-	}
-
 	relationships := []interface{}{}
 	for _, v := range processor.Component.Config.AutoTerminatedRelationships {
 		relationships = append(relationships, v)
@@ -243,7 +240,7 @@ func ProcessorToSchema(d *schema.ResourceData, processor *Processor) error {
 			"concurrently_schedulable_task_count": processor.Component.Config.ConcurrentlySchedulableTaskCount,
 			"scheduling_strategy":                 processor.Component.Config.SchedulingStrategy,
 			"scheduling_period":                   processor.Component.Config.SchedulingPeriod,
-			"properties":                          properties,
+			"properties":                          processor.Component.Config.Properties,
 			"auto_terminated_relationships":       relationships,
 		}},
 	}}

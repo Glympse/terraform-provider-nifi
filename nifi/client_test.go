@@ -26,17 +26,14 @@ func TestClientProcessGroupCreate(t *testing.T) {
 		},
 	}
 	client.CreateProcessGroup(&processGroup)
-
 	assert.NotEmpty(t, processGroup.Component.Id)
 
 	processGroup2, err := client.GetProcessGroup(processGroup.Component.Id)
-
 	assert.Equal(t, err, nil)
 	assert.NotEmpty(t, processGroup2.Component.Id)
 
 	processGroup.Component.Name = "kafka_to_s3_1"
 	err = client.UpdateProcessGroup(&processGroup)
-
 	assert.Equal(t, err, nil)
 }
 
@@ -63,7 +60,7 @@ func TestClientProcessorCreate(t *testing.T) {
 				SchedulingStrategy:               "TIMER_DRIVEN",
 				SchedulingPeriod:                 "0 sec",
 				ConcurrentlySchedulableTaskCount: 1,
-				Properties: map[string]string{
+				Properties: map[string]interface{}{
 					"security.protocol":      "PLAINTEXT",
 					"topic":                  "cards-core-api",
 					"group.id":               "nifi-api-streamer",
@@ -78,7 +75,17 @@ func TestClientProcessorCreate(t *testing.T) {
 			},
 		},
 	}
-	client.CreateProcessor(&processor)
-
+	err := client.CreateProcessor(&processor)
+	assert.Nil(t, err)
 	assert.NotEmpty(t, processor.Component.Id)
+
+	processor.Component.Config.AutoTerminatedRelationships = []string{}
+	err = client.UpdateProcessor(&processor)
+	assert.Nil(t, err)
+
+	processor.Component.Config.AutoTerminatedRelationships = []string{
+		"success",
+	}
+	err = client.UpdateProcessor(&processor)
+	assert.Nil(t, err)
 }
