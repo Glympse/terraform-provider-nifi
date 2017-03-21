@@ -5,31 +5,23 @@ The provider needs to be configured with the proper host before it can be used.
 
 Use the navigation to the left to read about the available resources.
 
-## Example Usage
-
-```
-# Configure the NiFi provider
-provider "nifi" {
-  host = "localhost:8080"
-  api_path = "nifi-api"
-}
-```
-
-## Argument Reference
-
-The following arguments are supported:
-
-Argument | Required | Description
----|---|---
-**api_key** | Yes | NiFi host (including port). e.g. `localhost:8080`
-**api_path** | No | API path prefix. e.g. `nifi-api`
-
-## Requirements
+## Plugin Requirements
 
 - Terraform 0.9
+
+## NiFi Version Compatibility
+
+Plugin Version | Supported NiFi API Version
+---|---
+0.1+ | 1.1+
 
 ## Known Limitations
 
 - Only Process Groups, Processors and Connection resources are supported. 
 - Parent group id can't be changed (on any of the resources).
-- Resources are never started or stopped.  
+- Resources are never started or stopped.
+  
+## References
+
+- NiFi API Documentation
+  https://nifi.apache.org/docs/nifi-docs/rest-api/
