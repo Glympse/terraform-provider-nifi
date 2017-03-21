@@ -31,7 +31,7 @@ type Position struct {
 	Y float64 `json:"y"`
 }
 
-func (c *Client) JsonCall(method string, url string, bodyIn interface{}, bodyOut interface{}) error {
+func (c *Client) JsonCall(method string, url string, bodyIn interface{}, bodyOut interface{}) (error, int) {
 	var requestBody io.Reader = nil
 	if bodyIn != nil {
 		var buffer = new(bytes.Buffer)
@@ -40,7 +40,7 @@ func (c *Client) JsonCall(method string, url string, bodyIn interface{}, bodyOut
 	}
 	request, err := http.NewRequest(method, url, requestBody)
 	if err != nil {
-		return err
+		return err, 0
 	}
 
 	if bodyIn != nil {
@@ -49,21 +49,24 @@ func (c *Client) JsonCall(method string, url string, bodyIn interface{}, bodyOut
 
 	response, err := c.Client.Do(request)
 	if err != nil {
-		return err
+		return err, 0
+	}
+	if response.StatusCode == 404 {
+		return nil, response.StatusCode
 	}
 	if response.StatusCode >= 300 {
-		return fmt.Errorf("The call has failed with the code of %d", response.StatusCode)
+		return fmt.Errorf("The call has failed with the code of %d", response.StatusCode), response.StatusCode
 	}
 	defer response.Body.Close()
 
 	if bodyOut != nil {
 		err = json.NewDecoder(response.Body).Decode(bodyOut)
 		if err != nil {
-			return err
+			return err, response.StatusCode
 		}
 	}
 
-	return nil
+	return nil, response.StatusCode
 }
 
 // Process Group section
@@ -83,7 +86,7 @@ type ProcessGroup struct {
 func (c *Client) CreateProcessGroup(processGroup *ProcessGroup) error {
 	url := fmt.Sprintf("http://%s/%s/process-groups/%s/process-groups",
 		c.Config.Host, c.Config.ApiPath, processGroup.Component.ParentGroupId)
-	err := c.JsonCall("POST", url, processGroup, processGroup)
+	err, _ := c.JsonCall("POST", url, processGroup, processGroup)
 	return err
 }
 
@@ -91,9 +94,12 @@ func (c *Client) GetProcessGroup(processGroupId string) (*ProcessGroup, error) {
 	url := fmt.Sprintf("http://%s/%s/process-groups/%s",
 		c.Config.Host, c.Config.ApiPath, processGroupId)
 	processGroup := ProcessGroup{}
-	err := c.JsonCall("GET", url, nil, &processGroup)
+	err, code := c.JsonCall("GET", url, nil, &processGroup)
 	if err != nil {
 		return nil, err
+	}
+	if 404 == code {
+		return nil, nil
 	}
 	return &processGroup, nil
 }
@@ -101,14 +107,14 @@ func (c *Client) GetProcessGroup(processGroupId string) (*ProcessGroup, error) {
 func (c *Client) UpdateProcessGroup(processGroup *ProcessGroup) error {
 	url := fmt.Sprintf("http://%s/%s/process-groups/%s",
 		c.Config.Host, c.Config.ApiPath, processGroup.Component.Id)
-	err := c.JsonCall("PUT", url, processGroup, processGroup)
+	err, _ := c.JsonCall("PUT", url, processGroup, processGroup)
 	return err
 }
 
 func (c *Client) DeleteProcessGroup(processGroupId string) error {
 	url := fmt.Sprintf("http://%s/%s/process-groups/%s",
 		c.Config.Host, c.Config.ApiPath, processGroupId)
-	err := c.JsonCall("DELETE", url, nil, nil)
+	err, _ := c.JsonCall("DELETE", url, nil, nil)
 	return err
 }
 
@@ -144,20 +150,18 @@ type Processor struct {
 }
 
 func (c *Client) ProcessorCleanupNilProperties(processor *Processor) error {
-	properties := map[string]interface{}{}
 	for k, v := range processor.Component.Config.Properties {
-		if v != nil {
-			properties[k] = v
+		if v == nil {
+			delete(processor.Component.Config.Properties, k)
 		}
 	}
-	processor.Component.Config.Properties = properties
 	return nil
 }
 
 func (c *Client) CreateProcessor(processor *Processor) error {
 	url := fmt.Sprintf("http://%s/%s/process-groups/%s/processors",
 		c.Config.Host, c.Config.ApiPath, processor.Component.ParentGroupId)
-	err := c.JsonCall("POST", url, processor, processor)
+	err, _ := c.JsonCall("POST", url, processor, processor)
 	c.ProcessorCleanupNilProperties(processor)
 	return err
 }
@@ -166,7 +170,13 @@ func (c *Client) GetProcessor(processorId string) (*Processor, error) {
 	url := fmt.Sprintf("http://%s/%s/processors/%s",
 		c.Config.Host, c.Config.ApiPath, processorId)
 	processor := Processor{}
-	err := c.JsonCall("GET", url, nil, &processor)
+	err, code := c.JsonCall("GET", url, nil, &processor)
+	if err != nil {
+		return nil, err
+	}
+	if 404 == code {
+		return nil, nil
+	}
 
 	c.ProcessorCleanupNilProperties(&processor)
 
@@ -178,16 +188,13 @@ func (c *Client) GetProcessor(processorId string) (*Processor, error) {
 	}
 	processor.Component.Config.AutoTerminatedRelationships = relationships
 
-	if err != nil {
-		return nil, err
-	}
 	return &processor, nil
 }
 
 func (c *Client) UpdateProcessor(processor *Processor) error {
 	url := fmt.Sprintf("http://%s/%s/processors/%s",
 		c.Config.Host, c.Config.ApiPath, processor.Component.Id)
-	err := c.JsonCall("PUT", url, processor, processor)
+	err, _ := c.JsonCall("PUT", url, processor, processor)
 	c.ProcessorCleanupNilProperties(processor)
 	return err
 }
@@ -195,7 +202,7 @@ func (c *Client) UpdateProcessor(processor *Processor) error {
 func (c *Client) DeleteProcessor(processorId string) error {
 	url := fmt.Sprintf("http://%s/%s/processors/%s",
 		c.Config.Host, c.Config.ApiPath, processorId)
-	err := c.JsonCall("DELETE", url, nil, nil)
+	err, _ := c.JsonCall("DELETE", url, nil, nil)
 	return err
 }
 
@@ -223,7 +230,7 @@ type Connection struct {
 func (c *Client) CreateConnection(connection *Connection) error {
 	url := fmt.Sprintf("http://%s/%s/process-groups/%s/connections",
 		c.Config.Host, c.Config.ApiPath, connection.Component.ParentGroupId)
-	err := c.JsonCall("POST", url, connection, connection)
+	err, _ := c.JsonCall("POST", url, connection, connection)
 	return err
 }
 
@@ -231,9 +238,12 @@ func (c *Client) GetConnection(connectionId string) (*Connection, error) {
 	url := fmt.Sprintf("http://%s/%s/connections/%s",
 		c.Config.Host, c.Config.ApiPath, connectionId)
 	connection := Connection{}
-	err := c.JsonCall("GET", url, nil, &connection)
+	err, code := c.JsonCall("GET", url, nil, &connection)
 	if err != nil {
 		return nil, err
+	}
+	if 404 == code {
+		return nil, nil
 	}
 	return &connection, nil
 }
@@ -241,13 +251,13 @@ func (c *Client) GetConnection(connectionId string) (*Connection, error) {
 func (c *Client) UpdateConnection(connection *Connection) error {
 	url := fmt.Sprintf("http://%s/%s/connections/%s",
 		c.Config.Host, c.Config.ApiPath, connection.Component.Id)
-	err := c.JsonCall("PUT", url, connection, connection)
+	err, _ := c.JsonCall("PUT", url, connection, connection)
 	return err
 }
 
 func (c *Client) DeleteConnection(connectionId string) error {
 	url := fmt.Sprintf("http://%s/%s/connections/%s",
 		c.Config.Host, c.Config.ApiPath, connectionId)
-	err := c.JsonCall("DELETE", url, nil, nil)
+	err, _ := c.JsonCall("DELETE", url, nil, nil)
 	return err
 }
