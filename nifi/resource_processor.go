@@ -161,8 +161,23 @@ func ResourceProcessorDelete(d *schema.ResourceData, meta interface{}) error {
 	processorId := d.Id()
 	log.Printf("[INFO] Deleting Processor: %s", processorId)
 
+	// Refresh processor details
 	client := meta.(*Client)
-	err := client.DeleteProcessor(processorId)
+	processor, err := client.GetProcessor(processorId)
+	if err != nil {
+		return fmt.Errorf("Error retrieving Processor: %s", processorId)
+	}
+
+	// Stop processor if it is currently running
+	if "RUNNING" == processor.Component.State {
+		err = client.StopProcessor(processor)
+		if err != nil {
+			return fmt.Errorf("Failed to stop Processor: %s", processorId)
+		}
+	}
+
+	// Delete processor
+	err = client.DeleteProcessor(processorId)
 	if err != nil {
 		return fmt.Errorf("Error deleting Processor: %s", processorId)
 	}
