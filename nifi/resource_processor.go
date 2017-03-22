@@ -120,20 +120,38 @@ func ResourceProcessorUpdate(d *schema.ResourceData, meta interface{}) error {
 	// It is not possible to auto-terminate a relationship if ae existing connection declares this relationship type.
 	// The issue can be resolved automatically via updating/removing the connection.
 
+	// Refresh processor details
 	client := meta.(*Client)
 	processor, err := client.GetProcessor(processorId)
 	if err != nil {
 		return fmt.Errorf("Error retrieving Processor: %s", processorId)
 	}
 
+	// Stop processor if it is currently running
+	wasStarted := "RUNNING" == processor.Component.State
+	if wasStarted {
+		err = client.StopProcessor(processor)
+		if err != nil {
+			return fmt.Errorf("Failed to stop Processor: %s", processorId)
+		}
+	}
+
+	// Update processor
 	err = ProcessorFromSchema(d, processor)
 	if err != nil {
 		return fmt.Errorf("Failed to parse Processor schema: %s", processorId)
 	}
-
 	err = client.UpdateProcessor(processor)
 	if err != nil {
 		return fmt.Errorf("Failed to update Processor: %s", processorId)
+	}
+
+	// Start processor again if it was running before
+	if wasStarted {
+		err = client.StartProcessor(processor)
+		if err != nil {
+			return fmt.Errorf("Failed to start Processor: %s", processorId)
+		}
 	}
 
 	return ResourceProcessorRead(d, meta)

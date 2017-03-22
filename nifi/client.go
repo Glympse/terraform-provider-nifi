@@ -140,6 +140,7 @@ type ProcessorComponent struct {
 	Name          string                  `json:"name"`
 	Type          string                  `json:"type"`
 	Position      Position                `json:"position"`
+	State         string                  `json:"state,omitempty"`
 	Config        ProcessorConfig         `json:"config"`
 	Relationships []ProcessorRelationship `json:"relationships"`
 }
@@ -204,6 +205,33 @@ func (c *Client) DeleteProcessor(processorId string) error {
 		c.Config.Host, c.Config.ApiPath, processorId)
 	err, _ := c.JsonCall("DELETE", url, nil, nil)
 	return err
+}
+
+func (c *Client) SetProcessorState(processor *Processor, state string) error {
+	stateUpdate := Processor{
+		Revision: Revision{
+			Version: processor.Revision.Version,
+		},
+		Component: ProcessorComponent{
+			Id: processor.Component.Id,
+			State: state,
+		},
+	}
+	url := fmt.Sprintf("http://%s/%s/processors/%s",
+		c.Config.Host, c.Config.ApiPath, processor.Component.Id)
+	err, _ := c.JsonCall("PUT", url, stateUpdate, nil)
+	if nil == err {
+		processor.Component.State = state
+	}
+	return err
+}
+
+func (c *Client) StartProcessor(processor *Processor) error {
+	return c.SetProcessorState(processor, "RUNNING")
+}
+
+func (c *Client) StopProcessor(processor *Processor) error {
+	return c.SetProcessorState(processor, "STOPPED")
 }
 
 // Connection section
