@@ -50,8 +50,8 @@ func TestClientProcessorCreate(t *testing.T) {
 		},
 		Component: ProcessorComponent{
 			ParentGroupId: "root",
-			Name:          "consume_kafka",
-			Type:          "org.apache.nifi.processors.kafka.pubsub.ConsumeKafka_0_10",
+			Name:          "generate_flowfile",
+			Type:          "org.apache.nifi.processors.standard.GenerateFlowFile",
 			Position: Position{
 				X: 0,
 				Y: 0,
@@ -61,13 +61,10 @@ func TestClientProcessorCreate(t *testing.T) {
 				SchedulingPeriod:                 "0 sec",
 				ConcurrentlySchedulableTaskCount: 1,
 				Properties: map[string]interface{}{
-					"security.protocol":      "PLAINTEXT",
-					"topic":                  "cards-core-api",
-					"group.id":               "nifi-api-streamer",
-					"auto.offset.reset":      "latest",
-					"key-attribute-encoding": "utf-8",
-					"message-demarcator":     "\n",
-					"max.poll.records":       "10000",
+					"File Size":        "0B",
+					"Batch Size":       "1",
+					"Data Format":      "Text",
+					"Unique FlowFiles": "false",
 				},
 				AutoTerminatedRelationships: []string{
 					"success",
@@ -87,5 +84,11 @@ func TestClientProcessorCreate(t *testing.T) {
 		"success",
 	}
 	err = client.UpdateProcessor(&processor)
+	assert.Nil(t, err)
+
+	err = client.StartProcessor(&processor)
+	assert.Nil(t, err)
+
+	err = client.StopProcessor(&processor)
 	assert.Nil(t, err)
 }
