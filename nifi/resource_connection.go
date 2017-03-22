@@ -213,18 +213,18 @@ func ResourceConnectionExists(d *schema.ResourceData, meta interface{}) (bool, e
 	connectionId := d.Id()
 
 	client := meta.(*Client)
-	connection, err := client.GetConnection(connectionId)
-	if err != nil {
-		return false, fmt.Errorf("Error testing existence of Connection: %s", connectionId)
+	_, err := client.GetConnection(connectionId)
+	if nil != err {
+		if "not_found" == err.Error() {
+			log.Printf("[INFO] Connection %s no longer exists, removing from state...", connectionId)
+			d.SetId("")
+			return false, nil
+		} else {
+			return false, fmt.Errorf("Error testing existence of Connection: %s", connectionId)
+		}
 	}
 
-	exists := nil != connection
-	if !exists {
-		log.Printf("[INFO] Connection %s no longer exists, removing from state...", connectionId)
-		d.SetId("")
-	}
-
-	return exists, nil
+	return true, nil
 }
 
 // Processor Helpers
