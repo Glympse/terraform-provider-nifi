@@ -96,12 +96,18 @@ func ResourceConnectionCreate(d *schema.ResourceData, meta interface{}) error {
 	}
 	parentGroupId := connection.Component.ParentGroupId
 
+	// Create connection
 	client := meta.(*Client)
 	err = client.CreateConnection(&connection)
 	if err != nil {
 		return fmt.Errorf("Failed to create Connection")
 	}
 
+	// Start related processors
+	ConnectionStartProcessor(client, connection.Component.Source.Id)
+	ConnectionStartProcessor(client, connection.Component.Destination.Id)
+
+	// Indicate successful creation
 	d.SetId(connection.Component.Id)
 	d.Set("parent_group_id", parentGroupId)
 
@@ -135,12 +141,12 @@ func ResourceConnectionUpdate(d *schema.ResourceData, meta interface{}) error {
 		return fmt.Errorf("Error retrieving Connection: %s", connectionId)
 	}
 
-	// Stop related processors if it is started
-	sourceWasStarted, sourceProcessor, err := ConnectionStopProcessor(client, connection.Component.Source.Id)
+	// Stop related processors
+	err = ConnectionStopProcessor(client, connection.Component.Source.Id)
 	if err != nil {
 		return fmt.Errorf("Failed to stop source Processor: %s", connection.Component.Source.Id)
 	}
-	destinationWasStarted, destinationProcessor, err := ConnectionStopProcessor(client, connection.Component.Destination.Id)
+	err = ConnectionStopProcessor(client, connection.Component.Destination.Id)
 	if err != nil {
 		return fmt.Errorf("Failed to stop destination Processor: %s", connection.Component.Destination.Id)
 	}
@@ -155,19 +161,9 @@ func ResourceConnectionUpdate(d *schema.ResourceData, meta interface{}) error {
 		return fmt.Errorf("Failed to update Connection: %s", connectionId)
 	}
 
-	// Start related processors if it was started before
-	if sourceWasStarted {
-		err = client.StartProcessor(sourceProcessor)
-		if err != nil {
-			return fmt.Errorf("Failed to start source Processor: %s", connection.Component.Source.Id)
-		}
-	}
-	if destinationWasStarted {
-		err = client.StartProcessor(destinationProcessor)
-		if err != nil {
-			return fmt.Errorf("Failed to start destination Processor: %s", connection.Component.Destination.Id)
-		}
-	}
+	// Start related processors
+	ConnectionStartProcessor(client, connection.Component.Source.Id)
+	ConnectionStartProcessor(client, connection.Component.Destination.Id)
 
 	return ResourceConnectionRead(d, meta)
 }
@@ -190,11 +186,11 @@ func ResourceConnectionDelete(d *schema.ResourceData, meta interface{}) error {
 	}
 
 	// Stop related processors if it is started
-	sourceWasStarted, sourceProcessor, err := ConnectionStopProcessor(client, connection.Component.Source.Id)
+	err = ConnectionStopProcessor(client, connection.Component.Source.Id)
 	if err != nil {
 		return fmt.Errorf("Failed to stop source Processor: %s", connection.Component.Source.Id)
 	}
-	destinationWasStarted, destinationProcessor, err := ConnectionStopProcessor(client, connection.Component.Destination.Id)
+	err = ConnectionStopProcessor(client, connection.Component.Destination.Id)
 	if err != nil {
 		return fmt.Errorf("Failed to stop destination Processor: %s", connection.Component.Destination.Id)
 	}
@@ -205,21 +201,9 @@ func ResourceConnectionDelete(d *schema.ResourceData, meta interface{}) error {
 		return fmt.Errorf("Error deleting Connection: %s", connectionId)
 	}
 
-	// Start related processors if it was started before. There is a chance that processors won't be able to start
-	// once disconnected. Therefore failure to start it is not considered critical. One of the subsequent updates
-	// (e.g. connection creation) may return processors to running state.
-	if sourceWasStarted {
-		err = client.StartProcessor(sourceProcessor)
-		if err != nil {
-			log.Printf("[INFO] Failed to start source Processor: %s ", connection.Component.Source.Id)
-		}
-	}
-	if destinationWasStarted {
-		err = client.StartProcessor(destinationProcessor)
-		if err != nil {
-			log.Printf("[INFO] Failed to start destination Processor: %s ", connection.Component.Destination.Id)
-		}
-	}
+	// Start related processors
+	ConnectionStartProcessor(client, connection.Component.Source.Id)
+	ConnectionStartProcessor(client, connection.Component.Destination.Id)
 
 	d.SetId("")
 	return nil
@@ -245,19 +229,32 @@ func ResourceConnectionExists(d *schema.ResourceData, meta interface{}) (bool, e
 
 // Processor Helpers
 
-func ConnectionStopProcessor(client *Client, processorId string) (bool, *Processor, error) {
+func ConnectionStartProcessor(client *Client, processorId string) error {
 	processor, err := client.GetProcessor(processorId)
 	if err != nil {
-		return false, nil, fmt.Errorf("Error retrieving Processor: %s", processorId)
+		return fmt.Errorf("Error retrieving Processor: %s", processorId)
 	}
-	wasStarted := "RUNNING" == processor.Component.State
-	if wasStarted {
-		err = client.StopProcessor(processor)
+	if "RUNNING" != processor.Component.State {
+		err = client.StartProcessor(processor)
 		if err != nil {
-			return false, nil, fmt.Errorf("Failed to stop Processor: %s", processorId)
+			return fmt.Errorf("Failed to start Processor: %s", processorId)
 		}
 	}
-	return wasStarted, processor, nil
+	return nil
+}
+
+func ConnectionStopProcessor(client *Client, processorId string) error {
+	processor, err := client.GetProcessor(processorId)
+	if err != nil {
+		return fmt.Errorf("Error retrieving Processor: %s", processorId)
+	}
+	if "RUNNING" == processor.Component.State {
+		err = client.StopProcessor(processor)
+		if err != nil {
+			return fmt.Errorf("Failed to stop Processor: %s", processorId)
+		}
+	}
+	return nil
 }
 
 // Schema Helpers

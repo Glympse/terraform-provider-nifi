@@ -84,12 +84,20 @@ func ResourceProcessorCreate(d *schema.ResourceData, meta interface{}) error {
 	}
 	parentGroupId := processor.Component.ParentGroupId
 
+	// Create processor
 	client := meta.(*Client)
 	err = client.CreateProcessor(&processor)
 	if err != nil {
 		return fmt.Errorf("Failed to create Processor")
 	}
 
+	// Start processor upon creation
+	err = client.StartProcessor(&processor)
+	if nil != err {
+		log.Printf("[INFO] Failed to start Processor: %s ", processor.Component.Id)
+	}
+
+	// Indicate successful creation
 	d.SetId(processor.Component.Id)
 	d.Set("parent_group_id", parentGroupId)
 
@@ -128,8 +136,7 @@ func ResourceProcessorUpdate(d *schema.ResourceData, meta interface{}) error {
 	}
 
 	// Stop processor if it is currently running
-	wasStarted := "RUNNING" == processor.Component.State
-	if wasStarted {
+	if "RUNNING" == processor.Component.State {
 		err = client.StopProcessor(processor)
 		if err != nil {
 			return fmt.Errorf("Failed to stop Processor: %s", processorId)
@@ -146,12 +153,10 @@ func ResourceProcessorUpdate(d *schema.ResourceData, meta interface{}) error {
 		return fmt.Errorf("Failed to update Processor: %s", processorId)
 	}
 
-	// Start processor again if it was running before
-	if wasStarted {
-		err = client.StartProcessor(processor)
-		if err != nil {
-			return fmt.Errorf("Failed to start Processor: %s", processorId)
-		}
+	// Start processor again
+	err = client.StartProcessor(processor)
+	if err != nil {
+		log.Printf("[INFO] Failed to start Processor: %s", processorId)
 	}
 
 	return ResourceProcessorRead(d, meta)
