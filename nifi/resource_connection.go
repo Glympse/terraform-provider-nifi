@@ -159,13 +159,13 @@ func ResourceConnectionUpdate(d *schema.ResourceData, meta interface{}) error {
 	if sourceWasStarted {
 		err = client.StartProcessor(sourceProcessor)
 		if err != nil {
-			return fmt.Errorf("Failed to start source Processor: %s", sourceProcessor.Component.Id)
+			return fmt.Errorf("Failed to start source Processor: %s", connection.Component.Source.Id)
 		}
 	}
 	if destinationWasStarted {
 		err = client.StartProcessor(destinationProcessor)
 		if err != nil {
-			return fmt.Errorf("Failed to start destination Processor: %s", destinationProcessor.Component.Id)
+			return fmt.Errorf("Failed to start destination Processor: %s", connection.Component.Destination.Id)
 		}
 	}
 
@@ -182,8 +182,14 @@ func ResourceConnectionDelete(d *schema.ResourceData, meta interface{}) error {
 	// - GET /flowfile-queues/{id}/drop-requests/{drop-request-id}
 	// - DELETE /flowfile-queues/{id}/drop-requests/{drop-request-id}
 
-	// Stop related processors if it is started
+	// Refresh connection details
 	client := meta.(*Client)
+	connection, err := client.GetConnection(connectionId)
+	if err != nil {
+		return fmt.Errorf("Error retrieving Connection: %s", connectionId)
+	}
+
+	// Stop related processors if it is started
 	sourceWasStarted, sourceProcessor, err := ConnectionStopProcessor(client, connection.Component.Source.Id)
 	if err != nil {
 		return fmt.Errorf("Failed to stop source Processor: %s", connection.Component.Source.Id)
@@ -194,22 +200,24 @@ func ResourceConnectionDelete(d *schema.ResourceData, meta interface{}) error {
 	}
 
 	// Delete connection
-	err := client.DeleteConnection(connectionId)
+	err = client.DeleteConnection(connectionId)
 	if err != nil {
 		return fmt.Errorf("Error deleting Connection: %s", connectionId)
 	}
 
-	// Start related processors if it was started before
+	// Start related processors if it was started before. There is a chance that processors won't be able to start
+	// once disconnected. Therefore failure to start it is not considered critical. One of the subsequent updates
+	// (e.g. connection creation) may return processors to running state.
 	if sourceWasStarted {
 		err = client.StartProcessor(sourceProcessor)
 		if err != nil {
-			return fmt.Errorf("Failed to start source Processor: %s", sourceProcessor.Component.Id)
+			log.Printf("[INFO] Failed to start source Processor: %s ", connection.Component.Source.Id)
 		}
 	}
 	if destinationWasStarted {
 		err = client.StartProcessor(destinationProcessor)
 		if err != nil {
-			return fmt.Errorf("Failed to start destination Processor: %s", destinationProcessor.Component.Id)
+			log.Printf("[INFO] Failed to start destination Processor: %s ", connection.Component.Destination.Id)
 		}
 	}
 
