@@ -128,20 +128,45 @@ func ResourceConnectionRead(d *schema.ResourceData, meta interface{}) error {
 func ResourceConnectionUpdate(d *schema.ResourceData, meta interface{}) error {
 	connectionId := d.Id()
 
+	// Refresh connection details
 	client := meta.(*Client)
 	connection, err := client.GetConnection(connectionId)
 	if err != nil {
 		return fmt.Errorf("Error retrieving Connection: %s", connectionId)
 	}
 
+	// Stop related processors if it is started
+	sourceWasStarted, sourceProcessor, err := ConnectionStopProcessor(client, connection.Component.Source.Id)
+	if err != nil {
+		return fmt.Errorf("Failed to stop source Processor: %s", connection.Component.Source.Id)
+	}
+	destinationWasStarted, destinationProcessor, err := ConnectionStopProcessor(client, connection.Component.Destination.Id)
+	if err != nil {
+		return fmt.Errorf("Failed to stop destination Processor: %s", connection.Component.Destination.Id)
+	}
+
+	// Update connection
 	err = ConnectionFromSchema(d, connection)
 	if err != nil {
 		return fmt.Errorf("Failed to parse Connection schema: %s", connectionId)
 	}
-
 	err = client.UpdateConnection(connection)
 	if err != nil {
 		return fmt.Errorf("Failed to update Connection: %s", connectionId)
+	}
+
+	// Start related processors if it was started before
+	if sourceWasStarted {
+		err = client.StartProcessor(sourceProcessor)
+		if err != nil {
+			return fmt.Errorf("Failed to start source Processor: %s", sourceProcessor.Component.Id)
+		}
+	}
+	if destinationWasStarted {
+		err = client.StartProcessor(destinationProcessor)
+		if err != nil {
+			return fmt.Errorf("Failed to start destination Processor: %s", destinationProcessor.Component.Id)
+		}
 	}
 
 	return ResourceConnectionRead(d, meta)
@@ -183,6 +208,23 @@ func ResourceConnectionExists(d *schema.ResourceData, meta interface{}) (bool, e
 	}
 
 	return exists, nil
+}
+
+// Processor Helpers
+
+func ConnectionStopProcessor(client *Client, processorId string) (bool, *Processor, error) {
+	processor, err := client.GetProcessor(processorId)
+	if err != nil {
+		return false, nil, fmt.Errorf("Error retrieving Processor: %s", processorId)
+	}
+	wasStarted := "RUNNING" == processor.Component.State
+	if wasStarted {
+		err = client.StopProcessor(processor)
+		if err != nil {
+			return false, nil, fmt.Errorf("Failed to stop Processor: %s", processorId)
+		}
+	}
+	return wasStarted, processor, nil
 }
 
 // Schema Helpers
