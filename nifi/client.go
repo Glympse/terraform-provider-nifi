@@ -1,11 +1,13 @@
 package nifi
 
 import (
+	"bufio"
 	"bytes"
 	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
+	"os"
 )
 
 type Client struct {
@@ -37,6 +39,10 @@ func (c *Client) JsonCall(method string, url string, bodyIn interface{}, bodyOut
 		var buffer = new(bytes.Buffer)
 		json.NewEncoder(buffer).Encode(bodyIn)
 		requestBody = buffer
+
+		f := bufio.NewWriter(os.Stdout)
+		defer f.Flush()
+		f.Write(buffer.Bytes())
 	}
 	request, err := http.NewRequest(method, url, requestBody)
 	if err != nil {
@@ -133,18 +139,27 @@ type ProcessorConfig struct {
 
 type ProcessorComponent struct {
 	Id            string                  `json:"id,omitempty"`
-	ParentGroupId string                  `json:"parentGroupId"`
-	Name          string                  `json:"name"`
-	Type          string                  `json:"type"`
-	Position      Position                `json:"position"`
+	ParentGroupId string                  `json:"parentGroupId,omitempty"`
+	Name          string                  `json:"name,omitempty"`
+	Type          string                  `json:"type,omitempty"`
+	Position      *Position               `json:"position,omitempty"`
 	State         string                  `json:"state,omitempty"`
-	Config        ProcessorConfig         `json:"config"`
-	Relationships []ProcessorRelationship `json:"relationships"`
+	Config        *ProcessorConfig        `json:"config,omitempty"`
+	Relationships []ProcessorRelationship `json:"relationships,omitempty"`
 }
 
 type Processor struct {
 	Revision  Revision           `json:"revision"`
 	Component ProcessorComponent `json:"component"`
+}
+
+func ProcessorStub() *Processor {
+	return &Processor{
+		Component: ProcessorComponent{
+			Position: &Position{},
+			Config:   &ProcessorConfig{},
+		},
+	}
 }
 
 func (c *Client) ProcessorCleanupNilProperties(processor *Processor) error {
@@ -167,7 +182,7 @@ func (c *Client) CreateProcessor(processor *Processor) error {
 func (c *Client) GetProcessor(processorId string) (*Processor, error) {
 	url := fmt.Sprintf("http://%s/%s/processors/%s",
 		c.Config.Host, c.Config.ApiPath, processorId)
-	processor := Processor{}
+	processor := ProcessorStub()
 	code, err := c.JsonCall("GET", url, nil, &processor)
 	if 404 == code {
 		return nil, fmt.Errorf("not_found")
@@ -176,7 +191,7 @@ func (c *Client) GetProcessor(processorId string) (*Processor, error) {
 		return nil, err
 	}
 
-	c.ProcessorCleanupNilProperties(&processor)
+	c.ProcessorCleanupNilProperties(processor)
 
 	relationships := []string{}
 	for _, v := range processor.Component.Relationships {
@@ -186,7 +201,7 @@ func (c *Client) GetProcessor(processorId string) (*Processor, error) {
 	}
 	processor.Component.Config.AutoTerminatedRelationships = relationships
 
-	return &processor, nil
+	return processor, nil
 }
 
 func (c *Client) UpdateProcessor(processor *Processor) error {
@@ -210,16 +225,13 @@ func (c *Client) SetProcessorState(processor *Processor, state string) error {
 			Version: processor.Revision.Version,
 		},
 		Component: ProcessorComponent{
-			Id: processor.Component.Id,
+			Id:    processor.Component.Id,
 			State: state,
 		},
 	}
 	url := fmt.Sprintf("http://%s/%s/processors/%s",
 		c.Config.Host, c.Config.ApiPath, processor.Component.Id)
-	err, _ := c.JsonCall("PUT", url, stateUpdate, nil)
-	if nil == err {
-		processor.Component.State = state
-	}
+	_, err := c.JsonCall("PUT", url, stateUpdate, processor)
 	return err
 }
 

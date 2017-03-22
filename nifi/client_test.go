@@ -52,11 +52,11 @@ func TestClientProcessorCreate(t *testing.T) {
 			ParentGroupId: "root",
 			Name:          "generate_flowfile",
 			Type:          "org.apache.nifi.processors.standard.GenerateFlowFile",
-			Position: Position{
+			Position: &Position{
 				X: 0,
 				Y: 0,
 			},
-			Config: ProcessorConfig{
+			Config: &ProcessorConfig{
 				SchedulingStrategy:               "TIMER_DRIVEN",
 				SchedulingPeriod:                 "0 sec",
 				ConcurrentlySchedulableTaskCount: 1,

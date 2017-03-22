@@ -75,10 +75,10 @@ func ResourceProcessor() *schema.Resource {
 }
 
 func ResourceProcessorCreate(d *schema.ResourceData, meta interface{}) error {
-	processor := Processor{}
+	processor := ProcessorStub()
 	processor.Revision.Version = 0
 
-	err := ProcessorFromSchema(d, &processor)
+	err := ProcessorFromSchema(d, processor)
 	if err != nil {
 		return fmt.Errorf("Failed to parse Processor schema")
 	}
@@ -86,13 +86,13 @@ func ResourceProcessorCreate(d *schema.ResourceData, meta interface{}) error {
 
 	// Create processor
 	client := meta.(*Client)
-	err = client.CreateProcessor(&processor)
+	err = client.CreateProcessor(processor)
 	if err != nil {
 		return fmt.Errorf("Failed to create Processor")
 	}
 
 	// Start processor upon creation
-	err = client.StartProcessor(&processor)
+	err = client.StartProcessor(processor)
 	if nil != err {
 		log.Printf("[INFO] Failed to start Processor: %s ", processor.Component.Id)
 	}
