@@ -157,18 +157,18 @@ func ResourceProcessorExists(d *schema.ResourceData, meta interface{}) (bool, er
 	processorId := d.Id()
 
 	client := meta.(*Client)
-	processor, err := client.GetProcessor(processorId)
-	if err != nil {
-		return false, fmt.Errorf("Error testing existence of Processor: %s", processorId)
+	_, err := client.GetProcessor(processorId)
+	if nil != err {
+		if "not_found" == err.Error() {
+			log.Printf("[INFO] Processor %s no longer exists, removing from state...", processorId)
+			d.SetId("")
+			return false, nil
+		} else {
+			return false, fmt.Errorf("Error testing existence of Processor: %s", processorId)
+		}
 	}
 
-	exists := nil != processor
-	if !exists {
-		log.Printf("[INFO] Processor %s no longer exists, removing from state...", processorId)
-		d.SetId("")
-	}
-
-	return exists, nil
+	return true, nil
 }
 
 // Schema Helpers

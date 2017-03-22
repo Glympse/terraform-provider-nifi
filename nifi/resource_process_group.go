@@ -117,18 +117,18 @@ func ResourceProcessGroupExists(d *schema.ResourceData, meta interface{}) (bool,
 	processGroupId := d.Id()
 
 	client := meta.(*Client)
-	processGroup, err := client.GetProcessGroup(processGroupId)
-	if err != nil {
-		return false, fmt.Errorf("Error testing existence of Process Group: %s", processGroupId)
+	_, err := client.GetProcessGroup(processGroupId)
+	if nil != err {
+		if "not_found" == err.Error() {
+			log.Printf("[INFO] Process Group %s no longer exists, removing from state...", processGroupId)
+			d.SetId("")
+			return false, nil
+		} else {
+			return false, fmt.Errorf("Error testing existence of Process Group: %s", processGroupId)
+		}
 	}
 
-	exists := nil != processGroup
-	if !exists {
-		log.Printf("[INFO] Process Group %s no longer exists, removing from state...", processGroupId)
-		d.SetId("")
-	}
-
-	return exists, nil
+	return true, nil
 }
 
 // Schema Helpers
