@@ -336,7 +336,8 @@ func (c *Client) DropConnectionData(connection *Connection) error {
 	}
 
 	// Give it some time to complete
-	for n := 0; n <= 10; n++ {
+	maxAttempts := 10
+	for iteration := 0; iteration < maxAttempts; iteration++ {
 		// Check status of the request
 		url = fmt.Sprintf("http://%s/%s/flowfile-queues/%s/drop-requests/%s",
 			c.Config.Host, c.Config.ApiPath, connection.Component.Id, dropRequest.DropRequest.Id)
@@ -353,6 +354,10 @@ func (c *Client) DropConnectionData(connection *Connection) error {
 
 		// Wait a bit
 		time.Sleep(3 * time.Second)
+
+		if maxAttempts - 1 == iteration {
+			log.Printf("[INFO] Failed to purge the Connection %s", dropRequest.DropRequest.Id)
+		}
 	}
 
 	// Remove a request to drop the contents of this connection
