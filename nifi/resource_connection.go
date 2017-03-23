@@ -96,12 +96,18 @@ func ResourceConnectionCreate(d *schema.ResourceData, meta interface{}) error {
 	}
 	parentGroupId := connection.Component.ParentGroupId
 
+	// Create connection
 	client := meta.(*Client)
 	err = client.CreateConnection(&connection)
 	if err != nil {
 		return fmt.Errorf("Failed to create Connection")
 	}
 
+	// Start related processors
+	ConnectionStartProcessor(client, connection.Component.Source.Id)
+	ConnectionStartProcessor(client, connection.Component.Destination.Id)
+
+	// Indicate successful creation
 	d.SetId(connection.Component.Id)
 	d.Set("parent_group_id", parentGroupId)
 
@@ -128,21 +134,36 @@ func ResourceConnectionRead(d *schema.ResourceData, meta interface{}) error {
 func ResourceConnectionUpdate(d *schema.ResourceData, meta interface{}) error {
 	connectionId := d.Id()
 
+	// Refresh connection details
 	client := meta.(*Client)
 	connection, err := client.GetConnection(connectionId)
 	if err != nil {
 		return fmt.Errorf("Error retrieving Connection: %s", connectionId)
 	}
 
+	// Stop related processors
+	err = ConnectionStopProcessor(client, connection.Component.Source.Id)
+	if err != nil {
+		return fmt.Errorf("Failed to stop source Processor: %s", connection.Component.Source.Id)
+	}
+	err = ConnectionStopProcessor(client, connection.Component.Destination.Id)
+	if err != nil {
+		return fmt.Errorf("Failed to stop destination Processor: %s", connection.Component.Destination.Id)
+	}
+
+	// Update connection
 	err = ConnectionFromSchema(d, connection)
 	if err != nil {
 		return fmt.Errorf("Failed to parse Connection schema: %s", connectionId)
 	}
-
 	err = client.UpdateConnection(connection)
 	if err != nil {
 		return fmt.Errorf("Failed to update Connection: %s", connectionId)
 	}
+
+	// Start related processors
+	ConnectionStartProcessor(client, connection.Component.Source.Id)
+	ConnectionStartProcessor(client, connection.Component.Destination.Id)
 
 	return ResourceConnectionRead(d, meta)
 }
@@ -157,11 +178,32 @@ func ResourceConnectionDelete(d *schema.ResourceData, meta interface{}) error {
 	// - GET /flowfile-queues/{id}/drop-requests/{drop-request-id}
 	// - DELETE /flowfile-queues/{id}/drop-requests/{drop-request-id}
 
+	// Refresh connection details
 	client := meta.(*Client)
-	err := client.DeleteConnection(connectionId)
+	connection, err := client.GetConnection(connectionId)
+	if err != nil {
+		return fmt.Errorf("Error retrieving Connection: %s", connectionId)
+	}
+
+	// Stop related processors if it is started
+	err = ConnectionStopProcessor(client, connection.Component.Source.Id)
+	if err != nil {
+		return fmt.Errorf("Failed to stop source Processor: %s", connection.Component.Source.Id)
+	}
+	err = ConnectionStopProcessor(client, connection.Component.Destination.Id)
+	if err != nil {
+		return fmt.Errorf("Failed to stop destination Processor: %s", connection.Component.Destination.Id)
+	}
+
+	// Delete connection
+	err = client.DeleteConnection(connectionId)
 	if err != nil {
 		return fmt.Errorf("Error deleting Connection: %s", connectionId)
 	}
+
+	// Start related processors
+	ConnectionStartProcessor(client, connection.Component.Source.Id)
+	ConnectionStartProcessor(client, connection.Component.Destination.Id)
 
 	d.SetId("")
 	return nil
@@ -183,6 +225,36 @@ func ResourceConnectionExists(d *schema.ResourceData, meta interface{}) (bool, e
 	}
 
 	return true, nil
+}
+
+// Processor Helpers
+
+func ConnectionStartProcessor(client *Client, processorId string) error {
+	processor, err := client.GetProcessor(processorId)
+	if err != nil {
+		return fmt.Errorf("Error retrieving Processor: %s", processorId)
+	}
+	if "RUNNING" != processor.Component.State {
+		err = client.StartProcessor(processor)
+		if err != nil {
+			return fmt.Errorf("Failed to start Processor: %s", processorId)
+		}
+	}
+	return nil
+}
+
+func ConnectionStopProcessor(client *Client, processorId string) error {
+	processor, err := client.GetProcessor(processorId)
+	if err != nil {
+		return fmt.Errorf("Error retrieving Processor: %s", processorId)
+	}
+	if "RUNNING" == processor.Component.State {
+		err = client.StopProcessor(processor)
+		if err != nil {
+			return fmt.Errorf("Failed to stop Processor: %s", processorId)
+		}
+	}
+	return nil
 }
 
 // Schema Helpers

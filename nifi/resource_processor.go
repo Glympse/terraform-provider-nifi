@@ -75,21 +75,29 @@ func ResourceProcessor() *schema.Resource {
 }
 
 func ResourceProcessorCreate(d *schema.ResourceData, meta interface{}) error {
-	processor := Processor{}
+	processor := ProcessorStub()
 	processor.Revision.Version = 0
 
-	err := ProcessorFromSchema(d, &processor)
+	err := ProcessorFromSchema(d, processor)
 	if err != nil {
 		return fmt.Errorf("Failed to parse Processor schema")
 	}
 	parentGroupId := processor.Component.ParentGroupId
 
+	// Create processor
 	client := meta.(*Client)
-	err = client.CreateProcessor(&processor)
+	err = client.CreateProcessor(processor)
 	if err != nil {
 		return fmt.Errorf("Failed to create Processor")
 	}
 
+	// Start processor upon creation
+	err = client.StartProcessor(processor)
+	if nil != err {
+		log.Printf("[INFO] Failed to start Processor: %s ", processor.Component.Id)
+	}
+
+	// Indicate successful creation
 	d.SetId(processor.Component.Id)
 	d.Set("parent_group_id", parentGroupId)
 
@@ -120,20 +128,35 @@ func ResourceProcessorUpdate(d *schema.ResourceData, meta interface{}) error {
 	// It is not possible to auto-terminate a relationship if ae existing connection declares this relationship type.
 	// The issue can be resolved automatically via updating/removing the connection.
 
+	// Refresh processor details
 	client := meta.(*Client)
 	processor, err := client.GetProcessor(processorId)
 	if err != nil {
 		return fmt.Errorf("Error retrieving Processor: %s", processorId)
 	}
 
+	// Stop processor if it is currently running
+	if "RUNNING" == processor.Component.State {
+		err = client.StopProcessor(processor)
+		if err != nil {
+			return fmt.Errorf("Failed to stop Processor: %s", processorId)
+		}
+	}
+
+	// Update processor
 	err = ProcessorFromSchema(d, processor)
 	if err != nil {
 		return fmt.Errorf("Failed to parse Processor schema: %s", processorId)
 	}
-
 	err = client.UpdateProcessor(processor)
 	if err != nil {
 		return fmt.Errorf("Failed to update Processor: %s", processorId)
+	}
+
+	// Start processor again
+	err = client.StartProcessor(processor)
+	if err != nil {
+		log.Printf("[INFO] Failed to start Processor: %s", processorId)
 	}
 
 	return ResourceProcessorRead(d, meta)
@@ -143,8 +166,23 @@ func ResourceProcessorDelete(d *schema.ResourceData, meta interface{}) error {
 	processorId := d.Id()
 	log.Printf("[INFO] Deleting Processor: %s", processorId)
 
+	// Refresh processor details
 	client := meta.(*Client)
-	err := client.DeleteProcessor(processorId)
+	processor, err := client.GetProcessor(processorId)
+	if err != nil {
+		return fmt.Errorf("Error retrieving Processor: %s", processorId)
+	}
+
+	// Stop processor if it is currently running
+	if "RUNNING" == processor.Component.State {
+		err = client.StopProcessor(processor)
+		if err != nil {
+			return fmt.Errorf("Failed to stop Processor: %s", processorId)
+		}
+	}
+
+	// Delete processor
+	err = client.DeleteProcessor(processorId)
 	if err != nil {
 		return fmt.Errorf("Error deleting Processor: %s", processorId)
 	}
