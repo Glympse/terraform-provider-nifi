@@ -1,18 +1,24 @@
 package nifi
 
 import (
-	"bufio"
 	"bytes"
 	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
-	"os"
+	"sync"
 )
 
 type Client struct {
 	Config Config
 	Client *http.Client
+
+	// The mutex is used by the plugin to prevent parallel execution of some update/delete operations.
+	// There are scenarios when updating a connection involves modifying related processors and vice versa.
+	// This breaks Terraform model to some extent but at the same time is unavoidable in NiFi world.
+	// Currently only flows that involve cross-resource interactions are wrapped into lock/unlock sections.
+	// Most of operations can still be performed in parallel.
+	Lock sync.Mutex
 }
 
 func NewClient(config Config) *Client {
@@ -110,11 +116,22 @@ func (c *Client) UpdateProcessGroup(processGroup *ProcessGroup) error {
 	return err
 }
 
-func (c *Client) DeleteProcessGroup(processGroupId string) error {
-	url := fmt.Sprintf("http://%s/%s/process-groups/%s",
-		c.Config.Host, c.Config.ApiPath, processGroupId)
+func (c *Client) DeleteProcessGroup(processGroup *ProcessGroup) error {
+	url := fmt.Sprintf("http://%s/%s/process-groups/%s?version=%d",
+		c.Config.Host, c.Config.ApiPath, processGroup.Component.Id, processGroup.Revision.Version)
 	_, err := c.JsonCall("DELETE", url, nil, nil)
 	return err
+}
+
+func (c *Client) GetProcessGroupConnections(processGroupId string) (*Connections, error) {
+	url := fmt.Sprintf("http://%s/%s/process-groups/%s/connections",
+		c.Config.Host, c.Config.ApiPath, processGroupId)
+	connections := Connections{}
+	_, err := c.JsonCall("GET", url, nil, &connections)
+	if nil != err {
+		return nil, err
+	}
+	return &connections, nil
 }
 
 // Processor section
@@ -208,9 +225,9 @@ func (c *Client) UpdateProcessor(processor *Processor) error {
 	return err
 }
 
-func (c *Client) DeleteProcessor(processorId string) error {
-	url := fmt.Sprintf("http://%s/%s/processors/%s",
-		c.Config.Host, c.Config.ApiPath, processorId)
+func (c *Client) DeleteProcessor(processor *Processor) error {
+	url := fmt.Sprintf("http://%s/%s/processors/%s?version=%d",
+		c.Config.Host, c.Config.ApiPath, processor.Component.Id, processor.Revision.Version)
 	_, err := c.JsonCall("DELETE", url, nil, nil)
 	return err
 }
@@ -260,6 +277,10 @@ type Connection struct {
 	Component ConnectionComponent `json:"component"`
 }
 
+type Connections struct {
+	Connections []Connection `json:"connections"`
+}
+
 func (c *Client) CreateConnection(connection *Connection) error {
 	url := fmt.Sprintf("http://%s/%s/process-groups/%s/connections",
 		c.Config.Host, c.Config.ApiPath, connection.Component.ParentGroupId)
@@ -288,9 +309,9 @@ func (c *Client) UpdateConnection(connection *Connection) error {
 	return err
 }
 
-func (c *Client) DeleteConnection(connectionId string) error {
-	url := fmt.Sprintf("http://%s/%s/connections/%s",
-		c.Config.Host, c.Config.ApiPath, connectionId)
+func (c *Client) DeleteConnection(connection *Connection) error {
+	url := fmt.Sprintf("http://%s/%s/connections/%s?version=%d",
+		c.Config.Host, c.Config.ApiPath, connection.Component.Id, connection.Revision.Version)
 	_, err := c.JsonCall("DELETE", url, nil, nil)
 	return err
 }

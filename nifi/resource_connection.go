@@ -132,6 +132,16 @@ func ResourceConnectionRead(d *schema.ResourceData, meta interface{}) error {
 }
 
 func ResourceConnectionUpdate(d *schema.ResourceData, meta interface{}) error {
+	log.Printf("[INFO] Updating Connection: %s...", d.Id())
+	client := meta.(*Client)
+	client.Lock.Lock()
+	err := ResourceConnectionUpdateInternal(d, meta)
+	client.Lock.Unlock()
+	log.Printf("[INFO] Connection updated: %s", d.Id())
+	return err
+}
+
+func ResourceConnectionUpdateInternal(d *schema.ResourceData, meta interface{}) error {
 	connectionId := d.Id()
 
 	// Refresh connection details
@@ -169,8 +179,17 @@ func ResourceConnectionUpdate(d *schema.ResourceData, meta interface{}) error {
 }
 
 func ResourceConnectionDelete(d *schema.ResourceData, meta interface{}) error {
+	log.Printf("[INFO] Deleting Connection: %s...", d.Id())
+	client := meta.(*Client)
+	client.Lock.Lock()
+	err := ResourceConnectionDeleteInternal(d, meta)
+	client.Lock.Unlock()
+	log.Printf("[INFO] Connection deleted: %s", d.Id())
+	return err
+}
+
+func ResourceConnectionDeleteInternal(d *schema.ResourceData, meta interface{}) error {
 	connectionId := d.Id()
-	log.Printf("[INFO] Deleting Connection: %s", connectionId)
 
 	// NEXT: Live connections must be purged before it can be deleted. In most cases it is not desirable to do so
 	// as it leads to data loss. It can be achieved via the following call flow in cases when it is unavoidable:
@@ -196,7 +215,7 @@ func ResourceConnectionDelete(d *schema.ResourceData, meta interface{}) error {
 	}
 
 	// Delete connection
-	err = client.DeleteConnection(connectionId)
+	err = client.DeleteConnection(connection)
 	if err != nil {
 		return fmt.Errorf("Error deleting Connection: %s", connectionId)
 	}
