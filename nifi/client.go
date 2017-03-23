@@ -352,7 +352,7 @@ func (c *Client) DropConnectionData(connection *Connection) error {
 		log.Printf("[INFO] Purging Connection data %s %d...", dropRequest.DropRequest.Id, n + 1)
 
 		// Wait a bit
-		time.Sleep(10 * time.Second)
+		time.Sleep(3 * time.Second)
 	}
 
 	// Remove a request to drop the contents of this connection
