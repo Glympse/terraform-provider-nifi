@@ -305,6 +305,12 @@ func ProcessorRemoveOverlappingConnections(client *Client, processor *Processor)
 				log.Printf("[INFO] Failed to update Connection: %s", connection.Component.Id)
 			}
 		} else {
+			// Purge connection data
+			err = client.DropConnectionData(&connection)
+			if nil != err {
+				log.Printf("[INFO] Error purging Connection: %s", connection.Component.Id)
+			}
+
 			// Remove the connection
 			err = client.DeleteConnection(&connection)
 			if nil != err {

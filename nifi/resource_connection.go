@@ -196,12 +196,6 @@ func ResourceConnectionDelete(d *schema.ResourceData, meta interface{}) error {
 func ResourceConnectionDeleteInternal(d *schema.ResourceData, meta interface{}) error {
 	connectionId := d.Id()
 
-	// NEXT: Live connections must be purged before it can be deleted. In most cases it is not desirable to do so
-	// as it leads to data loss. It can be achieved via the following call flow in cases when it is unavoidable:
-	// - POST /flowfile-queues/{id}/drop-requests
-	// - GET /flowfile-queues/{id}/drop-requests/{drop-request-id}
-	// - DELETE /flowfile-queues/{id}/drop-requests/{drop-request-id}
-
 	// Refresh connection details
 	client := meta.(*Client)
 	connection, err := client.GetConnection(connectionId)
@@ -222,6 +216,12 @@ func ResourceConnectionDeleteInternal(d *schema.ResourceData, meta interface{}) 
 	err = ConnectionStopProcessor(client, connection.Component.Destination.Id)
 	if err != nil {
 		return fmt.Errorf("Failed to stop destination Processor: %s", connection.Component.Destination.Id)
+	}
+
+	// Purge connection data
+	err = client.DropConnectionData(connection)
+	if nil != err {
+		return fmt.Errorf("Error purging Connection: %s", connectionId)
 	}
 
 	// Delete connection

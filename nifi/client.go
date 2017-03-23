@@ -7,6 +7,8 @@ import (
 	"io"
 	"net/http"
 	"sync"
+	"time"
+	"log"
 )
 
 type Client struct {
@@ -281,6 +283,13 @@ type Connections struct {
 	Connections []Connection `json:"connections"`
 }
 
+type ConnectionDropRequest struct {
+	DropRequest struct {
+		Id    string `json:"id"`
+		Finished bool `json:"finished"`
+	} `json:"dropRequest"`
+}
+
 func (c *Client) CreateConnection(connection *Connection) error {
 	url := fmt.Sprintf("http://%s/%s/process-groups/%s/connections",
 		c.Config.Host, c.Config.ApiPath, connection.Component.ParentGroupId)
@@ -314,4 +323,45 @@ func (c *Client) DeleteConnection(connection *Connection) error {
 		c.Config.Host, c.Config.ApiPath, connection.Component.Id, connection.Revision.Version)
 	_, err := c.JsonCall("DELETE", url, nil, nil)
 	return err
+}
+
+func (c *Client) DropConnectionData(connection *Connection) error {
+	// Create a request to drop the contents of the queue in this connection
+	url := fmt.Sprintf("http://%s/%s/flowfile-queues/%s/drop-requests",
+		c.Config.Host, c.Config.ApiPath, connection.Component.Id)
+	dropRequest := ConnectionDropRequest{}
+	_, err := c.JsonCall("POST", url, nil, &dropRequest)
+	if nil != err {
+		return err
+	}
+
+	// Give it some time to complete
+	for n := 0; n <= 10; n++ {
+		// Check status of the request
+		url = fmt.Sprintf("http://%s/%s/flowfile-queues/%s/drop-requests/%s",
+			c.Config.Host, c.Config.ApiPath, connection.Component.Id, dropRequest.DropRequest.Id)
+		_, err = c.JsonCall("GET", url, nil, &dropRequest)
+		if nil != err {
+			continue
+		}
+		if dropRequest.DropRequest.Finished {
+			break
+		}
+
+		// Log progress
+		log.Printf("[INFO] Purging Connection data %s %d...", dropRequest.DropRequest.Id, n + 1)
+
+		// Wait a bit
+		time.Sleep(10 * time.Second)
+	}
+
+	// Remove a request to drop the contents of this connection
+	url = fmt.Sprintf("http://%s/%s/flowfile-queues/%s/drop-requests/%s",
+		c.Config.Host, c.Config.ApiPath, connection.Component.Id, dropRequest.DropRequest.Id)
+	_, err = c.JsonCall("DELETE", url, nil, nil)
+	if nil != err {
+		return err
+	}
+
+	return nil
 }
