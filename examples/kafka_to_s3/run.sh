@@ -4,7 +4,7 @@ set -e
 # Wipe previous state (useful for debugging)
 # rm -f terraform.tfstate
 
-# Enable the msot detailed logging (useful for debugging)
+# Enable the most detailed logging (useful for debugging)
 # export TF_LOG=TRACE
 
 # Plan changes

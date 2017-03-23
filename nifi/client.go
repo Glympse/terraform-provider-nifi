@@ -39,10 +39,6 @@ func (c *Client) JsonCall(method string, url string, bodyIn interface{}, bodyOut
 		var buffer = new(bytes.Buffer)
 		json.NewEncoder(buffer).Encode(bodyIn)
 		requestBody = buffer
-
-		f := bufio.NewWriter(os.Stdout)
-		defer f.Flush()
-		f.Write(buffer.Bytes())
 	}
 	request, err := http.NewRequest(method, url, requestBody)
 	if err != nil {
