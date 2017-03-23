@@ -83,7 +83,12 @@ func ResourceProcessGroupUpdate(d *schema.ResourceData, meta interface{}) error 
 	client := meta.(*Client)
 	processGroup, err := client.GetProcessGroup(processGroupId)
 	if err != nil {
-		return fmt.Errorf("Error retrieving Process Group: %s", processGroupId)
+		if "not_found" == err.Error() {
+			d.SetId("")
+			return nil
+		} else {
+			return fmt.Errorf("Error retrieving Process Group: %s", processGroupId)
+		}
 	}
 
 	err = ProcessGroupFromSchema(d, processGroup)
@@ -106,7 +111,12 @@ func ResourceProcessGroupDelete(d *schema.ResourceData, meta interface{}) error 
 	client := meta.(*Client)
 	processGroup, err := client.GetProcessGroup(processGroupId)
 	if nil != err {
-		return fmt.Errorf("Error retrieving Process Group: %s", processGroupId)
+		if "not_found" == err.Error() {
+			d.SetId("")
+			return nil
+		} else {
+			return fmt.Errorf("Error retrieving Process Group: %s", processGroupId)
+		}
 	}
 
 	err = client.DeleteProcessGroup(processGroup)

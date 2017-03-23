@@ -138,7 +138,12 @@ func ResourceProcessorUpdateInternal(d *schema.ResourceData, meta interface{}) e
 	client := meta.(*Client)
 	processor, err := client.GetProcessor(processorId)
 	if err != nil {
-		return fmt.Errorf("Error retrieving Processor: %s", processorId)
+		if "not_found" == err.Error() {
+			d.SetId("")
+			return nil
+		} else {
+			return fmt.Errorf("Error retrieving Processor: %s", processorId)
+		}
 	}
 
 	// Stop processor if it is currently running
@@ -194,7 +199,12 @@ func ResourceProcessorDeleteInternal(d *schema.ResourceData, meta interface{}) e
 	client := meta.(*Client)
 	processor, err := client.GetProcessor(processorId)
 	if err != nil {
-		return fmt.Errorf("Error retrieving Processor: %s", processorId)
+		if "not_found" == err.Error() {
+			d.SetId("")
+			return nil
+		} else {
+			return fmt.Errorf("Error retrieving Processor: %s", processorId)
+		}
 	}
 
 	// Stop processor if it is currently running

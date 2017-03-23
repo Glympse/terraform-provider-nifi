@@ -148,7 +148,12 @@ func ResourceConnectionUpdateInternal(d *schema.ResourceData, meta interface{}) 
 	client := meta.(*Client)
 	connection, err := client.GetConnection(connectionId)
 	if err != nil {
-		return fmt.Errorf("Error retrieving Connection: %s", connectionId)
+		if "not_found" == err.Error() {
+			d.SetId("")
+			return nil
+		} else {
+			return fmt.Errorf("Error retrieving Connection: %s", connectionId)
+		}
 	}
 
 	// Stop related processors
@@ -201,7 +206,12 @@ func ResourceConnectionDeleteInternal(d *schema.ResourceData, meta interface{}) 
 	client := meta.(*Client)
 	connection, err := client.GetConnection(connectionId)
 	if err != nil {
-		return fmt.Errorf("Error retrieving Connection: %s", connectionId)
+		if "not_found" == err.Error() {
+			d.SetId("")
+			return nil
+		} else {
+			return fmt.Errorf("Error retrieving Connection: %s", connectionId)
+		}
 	}
 
 	// Stop related processors if it is started
