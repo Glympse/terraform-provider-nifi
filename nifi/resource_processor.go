@@ -122,12 +122,12 @@ func ResourceProcessorRead(d *schema.ResourceData, meta interface{}) error {
 }
 
 func ResourceProcessorUpdate(d *schema.ResourceData, meta interface{}) error {
-	log.Printf("[INFO] Updating Processor: %s...", d.Id())
 	client := meta.(*Client)
 	client.Lock.Lock()
+	log.Printf("[INFO] Updating Processor: %s...", d.Id())
 	err := ResourceProcessorUpdateInternal(d, meta)
-	client.Lock.Unlock()
 	log.Printf("[INFO] Processor updated: %s", d.Id())
+	client.Lock.Unlock()
 	return err
 }
 
@@ -178,12 +178,12 @@ func ResourceProcessorUpdateInternal(d *schema.ResourceData, meta interface{}) e
 }
 
 func ResourceProcessorDelete(d *schema.ResourceData, meta interface{}) error {
-	log.Printf("[INFO] Deleting Processor: %s...", d.Id())
 	client := meta.(*Client)
 	client.Lock.Lock()
+	log.Printf("[INFO] Deleting Processor: %s...", d.Id())
 	err := ResourceProcessorDeleteInternal(d, meta)
-	client.Lock.Unlock()
 	log.Printf("[INFO] Processor deleted: %s", d.Id())
+	client.Lock.Unlock()
 	return err
 }
 

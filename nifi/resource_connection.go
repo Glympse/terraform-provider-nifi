@@ -132,12 +132,12 @@ func ResourceConnectionRead(d *schema.ResourceData, meta interface{}) error {
 }
 
 func ResourceConnectionUpdate(d *schema.ResourceData, meta interface{}) error {
-	log.Printf("[INFO] Updating Connection: %s...", d.Id())
 	client := meta.(*Client)
 	client.Lock.Lock()
+	log.Printf("[INFO] Updating Connection: %s...", d.Id())
 	err := ResourceConnectionUpdateInternal(d, meta)
-	client.Lock.Unlock()
 	log.Printf("[INFO] Connection updated: %s", d.Id())
+	client.Lock.Unlock()
 	return err
 }
 
@@ -179,12 +179,12 @@ func ResourceConnectionUpdateInternal(d *schema.ResourceData, meta interface{}) 
 }
 
 func ResourceConnectionDelete(d *schema.ResourceData, meta interface{}) error {
-	log.Printf("[INFO] Deleting Connection: %s...", d.Id())
 	client := meta.(*Client)
 	client.Lock.Lock()
+	log.Printf("[INFO] Deleting Connection: %s...", d.Id())
 	err := ResourceConnectionDeleteInternal(d, meta)
-	client.Lock.Unlock()
 	log.Printf("[INFO] Connection deleted: %s", d.Id())
+	client.Lock.Unlock()
 	return err
 }
 
