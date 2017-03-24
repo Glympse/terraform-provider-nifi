@@ -95,3 +95,58 @@ func TestClientProcessorCreate(t *testing.T) {
 	err = client.DeleteProcessor(&processor)
 	assert.Nil(t, err)
 }
+
+func TestClientControllerServiceCreate(t *testing.T) {
+	config := Config{
+		Host:    "10.0.119.99:3330",
+		ApiPath: "nifi-api",
+	}
+	client := NewClient(config)
+
+	processGroup := ProcessGroup{
+		Revision: Revision{
+			Version: 0,
+		},
+		Component: ProcessGroupComponent{
+			ParentGroupId: "root",
+			Name:          "aws_test",
+			Position: Position{
+				X: 0,
+				Y: 0,
+			},
+		},
+	}
+	err := client.CreateProcessGroup(&processGroup)
+	assert.Nil(t, err)
+	assert.NotEmpty(t, processGroup.Component.Id)
+
+	controllerService := ControllerService{
+		Revision: Revision{
+			Version: 0,
+		},
+		Component: ControllerServiceComponent{
+			ParentGroupId: processGroup.Component.Id,
+			Name:          "aws_controller",
+			Type:          "org.apache.nifi.processors.aws.credentials.provider.service.AWSCredentialsProviderControllerService",
+			State:         "ENABLED",
+		},
+	}
+	err = client.CreateControllerService(&controllerService)
+	assert.Nil(t, err)
+	assert.NotEmpty(t, controllerService.Component.Id)
+
+	err = client.DisableControllerService(&controllerService)
+	assert.Nil(t, err)
+
+	err = client.EnableControllerService(&controllerService)
+	assert.Nil(t, err)
+
+	err = client.DisableControllerService(&controllerService)
+	assert.Nil(t, err)
+
+	err = client.DeleteControllerService(&controllerService)
+	assert.Nil(t, err)
+
+	client.DeleteProcessGroup(&processGroup)
+	assert.Nil(t, err)
+}
