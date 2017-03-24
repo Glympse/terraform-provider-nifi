@@ -4,7 +4,7 @@ The NiFi provider is used to interact with NiFi cluster.
 It aims to make flow deployment and maintenance completely automated process.
 
 <div align="center">
-  <img src="examples/kafka_to_s3/flow.png" width="80%">
+  <img src="examples/kafka_to_s3/flow.png" width="60%">
 </div>
 
 ## Documentation
