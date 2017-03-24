@@ -122,17 +122,28 @@ func ResourceProcessorRead(d *schema.ResourceData, meta interface{}) error {
 }
 
 func ResourceProcessorUpdate(d *schema.ResourceData, meta interface{}) error {
-	processorId := d.Id()
+	client := meta.(*Client)
+	client.Lock.Lock()
+	log.Printf("[INFO] Updating Processor: %s...", d.Id())
+	err := ResourceProcessorUpdateInternal(d, meta)
+	log.Printf("[INFO] Processor updated: %s", d.Id())
+	defer client.Lock.Unlock()
+	return err
+}
 
-	// NEXT: Compare new list of auto-terminated connections against the list of processors existing connections.
-	// It is not possible to auto-terminate a relationship if ae existing connection declares this relationship type.
-	// The issue can be resolved automatically via updating/removing the connection.
+func ResourceProcessorUpdateInternal(d *schema.ResourceData, meta interface{}) error {
+	processorId := d.Id()
 
 	// Refresh processor details
 	client := meta.(*Client)
 	processor, err := client.GetProcessor(processorId)
 	if err != nil {
-		return fmt.Errorf("Error retrieving Processor: %s", processorId)
+		if "not_found" == err.Error() {
+			d.SetId("")
+			return nil
+		} else {
+			return fmt.Errorf("Error retrieving Processor: %s", processorId)
+		}
 	}
 
 	// Stop processor if it is currently running
@@ -143,11 +154,20 @@ func ResourceProcessorUpdate(d *schema.ResourceData, meta interface{}) error {
 		}
 	}
 
-	// Update processor
+	// Load processor's desired state
 	err = ProcessorFromSchema(d, processor)
 	if err != nil {
 		return fmt.Errorf("Failed to parse Processor schema: %s", processorId)
 	}
+
+	// Compare new list of auto-terminated connections against the list of processor's existing connections.
+	// It is not possible to auto-terminate a relationship if an existing connection declares this relationship type.
+	err = ProcessorRemoveOverlappingConnections(client, processor)
+	if nil != err {
+		return fmt.Errorf("Failed to cleanup connections for Processor: %s", processorId)
+	}
+
+	// Update processor
 	err = client.UpdateProcessor(processor)
 	if err != nil {
 		return fmt.Errorf("Failed to update Processor: %s", processorId)
@@ -163,14 +183,28 @@ func ResourceProcessorUpdate(d *schema.ResourceData, meta interface{}) error {
 }
 
 func ResourceProcessorDelete(d *schema.ResourceData, meta interface{}) error {
+	client := meta.(*Client)
+	client.Lock.Lock()
+	log.Printf("[INFO] Deleting Processor: %s...", d.Id())
+	err := ResourceProcessorDeleteInternal(d, meta)
+	log.Printf("[INFO] Processor deleted: %s", d.Id())
+	defer client.Lock.Unlock()
+	return err
+}
+
+func ResourceProcessorDeleteInternal(d *schema.ResourceData, meta interface{}) error {
 	processorId := d.Id()
-	log.Printf("[INFO] Deleting Processor: %s", processorId)
 
 	// Refresh processor details
 	client := meta.(*Client)
 	processor, err := client.GetProcessor(processorId)
 	if err != nil {
-		return fmt.Errorf("Error retrieving Processor: %s", processorId)
+		if "not_found" == err.Error() {
+			d.SetId("")
+			return nil
+		} else {
+			return fmt.Errorf("Error retrieving Processor: %s", processorId)
+		}
 	}
 
 	// Stop processor if it is currently running
@@ -182,7 +216,7 @@ func ResourceProcessorDelete(d *schema.ResourceData, meta interface{}) error {
 	}
 
 	// Delete processor
-	err = client.DeleteProcessor(processorId)
+	err = client.DeleteProcessor(processor)
 	if err != nil {
 		return fmt.Errorf("Error deleting Processor: %s", processorId)
 	}
@@ -207,6 +241,91 @@ func ResourceProcessorExists(d *schema.ResourceData, meta interface{}) (bool, er
 	}
 
 	return true, nil
+}
+
+// Connection Helpers
+
+func ProcessorRemoveOverlappingConnections(client *Client, processor *Processor) error {
+	// Build a set of processor's auto-terminated relationships
+	terminatedRelationships := map[string]bool{}
+	for _, v := range processor.Component.Config.AutoTerminatedRelationships {
+		terminatedRelationships[v] = true
+	}
+	if 0 == len(terminatedRelationships) {
+		// Nothing to do if processor does not define any auto-terminated relationships
+		return nil
+	}
+
+	// Fetch the list of process group connections.
+	groupConnections, err := client.GetProcessGroupConnections(processor.Component.ParentGroupId)
+	if nil != err {
+		return fmt.Errorf("Error retrieving Process Group connections: %s", processor.Component.ParentGroupId)
+	}
+
+	// Find a subset of these connections that overlap with the processor's auto-terminated relationships.
+	overlappingConnections := []Connection{}
+	for _, connection := range groupConnections.Connections {
+		if connection.Component.Source.Id != processor.Component.Id {
+			continue
+		}
+		found := false
+		for _, relationship := range connection.Component.SelectedRelationships {
+			if _, contains := terminatedRelationships[relationship]; contains {
+				found = true
+				break
+			}
+		}
+		if !found {
+			continue
+		}
+		overlappingConnections = append(overlappingConnections, connection)
+	}
+
+	// Remove overlaps
+	for _, connection := range overlappingConnections {
+		// Stop destination processor
+		err = ConnectionStopProcessor(client, connection.Component.Destination.Id)
+		if nil != err {
+			log.Printf("[INFO] Failed to stop Processor: %s", connection.Component.Destination.Id)
+			continue
+		}
+
+		// Update/remove connection
+		if len(connection.Component.SelectedRelationships) > 1 {
+			// Update the connection
+			filteredRelationships := connection.Component.SelectedRelationships[:0]
+			for _, relationship := range connection.Component.SelectedRelationships {
+				if _, contains := terminatedRelationships[relationship]; !contains {
+					filteredRelationships = append(filteredRelationships, relationship)
+				}
+			}
+
+			err = client.UpdateConnection(&connection)
+			if nil != err {
+				log.Printf("[INFO] Failed to update Connection: %s", connection.Component.Id)
+			}
+		} else {
+			// Purge connection data
+			err = client.DropConnectionData(&connection)
+			if nil != err {
+				log.Printf("[INFO] Error purging Connection: %s", connection.Component.Id)
+			}
+
+			// Remove the connection
+			err = client.DeleteConnection(&connection)
+			if nil != err {
+				log.Printf("[INFO] Failed to delete Connection: %s", connection.Component.Id)
+			}
+		}
+
+		// Start destination processor
+		err = ConnectionStartProcessor(client, connection.Component.Destination.Id)
+		if nil != err {
+			log.Printf("[INFO] Failed to start Processor: %s", connection.Component.Destination.Id)
+		}
+	}
+
+	return nil
 }
 
 // Schema Helpers

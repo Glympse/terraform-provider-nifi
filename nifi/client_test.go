@@ -91,4 +91,7 @@ func TestClientProcessorCreate(t *testing.T) {
 
 	err = client.StopProcessor(&processor)
 	assert.Nil(t, err)
+
+	err = client.DeleteProcessor(&processor)
+	assert.Nil(t, err)
 }

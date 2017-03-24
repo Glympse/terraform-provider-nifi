@@ -132,13 +132,28 @@ func ResourceConnectionRead(d *schema.ResourceData, meta interface{}) error {
 }
 
 func ResourceConnectionUpdate(d *schema.ResourceData, meta interface{}) error {
+	client := meta.(*Client)
+	client.Lock.Lock()
+	log.Printf("[INFO] Updating Connection: %s...", d.Id())
+	err := ResourceConnectionUpdateInternal(d, meta)
+	log.Printf("[INFO] Connection updated: %s", d.Id())
+	defer client.Lock.Unlock()
+	return err
+}
+
+func ResourceConnectionUpdateInternal(d *schema.ResourceData, meta interface{}) error {
 	connectionId := d.Id()
 
 	// Refresh connection details
 	client := meta.(*Client)
 	connection, err := client.GetConnection(connectionId)
 	if err != nil {
-		return fmt.Errorf("Error retrieving Connection: %s", connectionId)
+		if "not_found" == err.Error() {
+			d.SetId("")
+			return nil
+		} else {
+			return fmt.Errorf("Error retrieving Connection: %s", connectionId)
+		}
 	}
 
 	// Stop related processors
@@ -169,20 +184,28 @@ func ResourceConnectionUpdate(d *schema.ResourceData, meta interface{}) error {
 }
 
 func ResourceConnectionDelete(d *schema.ResourceData, meta interface{}) error {
-	connectionId := d.Id()
-	log.Printf("[INFO] Deleting Connection: %s", connectionId)
+	client := meta.(*Client)
+	client.Lock.Lock()
+	log.Printf("[INFO] Deleting Connection: %s...", d.Id())
+	err := ResourceConnectionDeleteInternal(d, meta)
+	log.Printf("[INFO] Connection deleted: %s", d.Id())
+	defer client.Lock.Unlock()
+	return err
+}
 
-	// NEXT: Live connections must be purged before it can be deleted. In most cases it is not desirable to do so
-	// as it leads to data loss. It can be achieved via the following call flow in cases when it is unavoidable:
-	// - POST /flowfile-queues/{id}/drop-requests
-	// - GET /flowfile-queues/{id}/drop-requests/{drop-request-id}
-	// - DELETE /flowfile-queues/{id}/drop-requests/{drop-request-id}
+func ResourceConnectionDeleteInternal(d *schema.ResourceData, meta interface{}) error {
+	connectionId := d.Id()
 
 	// Refresh connection details
 	client := meta.(*Client)
 	connection, err := client.GetConnection(connectionId)
 	if err != nil {
-		return fmt.Errorf("Error retrieving Connection: %s", connectionId)
+		if "not_found" == err.Error() {
+			d.SetId("")
+			return nil
+		} else {
+			return fmt.Errorf("Error retrieving Connection: %s", connectionId)
+		}
 	}
 
 	// Stop related processors if it is started
@@ -195,8 +218,14 @@ func ResourceConnectionDelete(d *schema.ResourceData, meta interface{}) error {
 		return fmt.Errorf("Failed to stop destination Processor: %s", connection.Component.Destination.Id)
 	}
 
+	// Purge connection data
+	err = client.DropConnectionData(connection)
+	if nil != err {
+		return fmt.Errorf("Error purging Connection: %s", connectionId)
+	}
+
 	// Delete connection
-	err = client.DeleteConnection(connectionId)
+	err = client.DeleteConnection(connection)
 	if err != nil {
 		return fmt.Errorf("Error deleting Connection: %s", connectionId)
 	}
