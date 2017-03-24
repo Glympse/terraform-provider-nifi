@@ -350,7 +350,7 @@ func (c *Client) DropConnectionData(connection *Connection) error {
 		}
 
 		// Log progress
-		log.Printf("[INFO] Purging Connection data %s %d...", dropRequest.DropRequest.Id, n + 1)
+		log.Printf("[INFO] Purging Connection data %s %d...", dropRequest.DropRequest.Id, iteration + 1)
 
 		// Wait a bit
 		time.Sleep(3 * time.Second)

@@ -290,16 +290,16 @@ func ProcessorRemoveOverlappingConnections(client *Client, processor *Processor)
 			continue
 		}
 
-		// Update/remove connection
-		if len(connection.Component.SelectedRelationships) > 1 {
-			// Update the connection
-			filteredRelationships := connection.Component.SelectedRelationships[:0]
-			for _, relationship := range connection.Component.SelectedRelationships {
-				if _, contains := terminatedRelationships[relationship]; !contains {
-					filteredRelationships = append(filteredRelationships, relationship)
-				}
+		// Prepare the list of relationships connection is allowed to keep
+		filteredRelationships := connection.Component.SelectedRelationships[:0]
+		for _, relationship := range connection.Component.SelectedRelationships {
+			if _, contains := terminatedRelationships[relationship]; !contains {
+				filteredRelationships = append(filteredRelationships, relationship)
 			}
+		}
 
+		// Update/remove connection
+		if len(filteredRelationships) > 0 {
 			err = client.UpdateConnection(&connection)
 			if nil != err {
 				log.Printf("[INFO] Failed to update Connection: %s", connection.Component.Id)
