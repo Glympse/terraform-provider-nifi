@@ -1,7 +1,11 @@
 # Terraform NiFi Provider
 
 The NiFi provider is used to interact with NiFi cluster.
-The provider needs to be configured with the proper host before it can be used.
+It aims to make flow deployment and maintenance completely automated process.
+
+<div align="center">
+  <img src="examples/kafka_to_s3/flow.png" width="80%">
+</div>
 
 ## Documentation
 
