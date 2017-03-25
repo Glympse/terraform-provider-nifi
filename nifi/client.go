@@ -5,10 +5,10 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"sync"
 	"time"
-	"log"
 )
 
 type Client struct {
@@ -177,10 +177,10 @@ func ProcessorStub() *Processor {
 	}
 }
 
-func (c *Client) ProcessorCleanupNilProperties(processor *Processor) error {
-	for k, v := range processor.Component.Config.Properties {
+func (c *Client) CleanupNilProperties(properties map[string]interface{}) error {
+	for k, v := range properties {
 		if v == nil {
-			delete(processor.Component.Config.Properties, k)
+			delete(properties, k)
 		}
 	}
 	return nil
@@ -190,8 +190,11 @@ func (c *Client) CreateProcessor(processor *Processor) error {
 	url := fmt.Sprintf("http://%s/%s/process-groups/%s/processors",
 		c.Config.Host, c.Config.ApiPath, processor.Component.ParentGroupId)
 	_, err := c.JsonCall("POST", url, processor, processor)
-	c.ProcessorCleanupNilProperties(processor)
-	return err
+	if nil != err {
+		return err
+	}
+	c.CleanupNilProperties(processor.Component.Config.Properties)
+	return nil
 }
 
 func (c *Client) GetProcessor(processorId string) (*Processor, error) {
@@ -206,7 +209,7 @@ func (c *Client) GetProcessor(processorId string) (*Processor, error) {
 		return nil, err
 	}
 
-	c.ProcessorCleanupNilProperties(processor)
+	c.CleanupNilProperties(processor.Component.Config.Properties)
 
 	relationships := []string{}
 	for _, v := range processor.Component.Relationships {
@@ -223,8 +226,11 @@ func (c *Client) UpdateProcessor(processor *Processor) error {
 	url := fmt.Sprintf("http://%s/%s/processors/%s",
 		c.Config.Host, c.Config.ApiPath, processor.Component.Id)
 	_, err := c.JsonCall("PUT", url, processor, processor)
-	c.ProcessorCleanupNilProperties(processor)
-	return err
+	if nil != err {
+		return err
+	}
+	c.CleanupNilProperties(processor.Component.Config.Properties)
+	return nil
 }
 
 func (c *Client) DeleteProcessor(processor *Processor) error {
@@ -285,8 +291,8 @@ type Connections struct {
 
 type ConnectionDropRequest struct {
 	DropRequest struct {
-		Id    string `json:"id"`
-		Finished bool `json:"finished"`
+		Id       string `json:"id"`
+		Finished bool   `json:"finished"`
 	} `json:"dropRequest"`
 }
 
@@ -350,12 +356,12 @@ func (c *Client) DropConnectionData(connection *Connection) error {
 		}
 
 		// Log progress
-		log.Printf("[INFO] Purging Connection data %s %d...", dropRequest.DropRequest.Id, iteration + 1)
+		log.Printf("[INFO] Purging Connection data %s %d...", dropRequest.DropRequest.Id, iteration+1)
 
 		// Wait a bit
 		time.Sleep(3 * time.Second)
 
-		if maxAttempts - 1 == iteration {
+		if maxAttempts-1 == iteration {
 			log.Printf("[INFO] Failed to purge the Connection %s", dropRequest.DropRequest.Id)
 		}
 	}
@@ -369,4 +375,88 @@ func (c *Client) DropConnectionData(connection *Connection) error {
 	}
 
 	return nil
+}
+
+// Controller Service section
+
+type ControllerServiceComponent struct {
+	Id            string                 `json:"id,omitempty"`
+	ParentGroupId string                 `json:"parentGroupId,omitempty"`
+	Name          string                 `json:"name,omitempty"`
+	Type          string                 `json:"type,omitempty"`
+	State         string                 `json:"state,omitempty"`
+	Properties    map[string]interface{} `json:"properties"`
+}
+
+type ControllerService struct {
+	Revision  Revision                   `json:"revision"`
+	Component ControllerServiceComponent `json:"component"`
+}
+
+func (c *Client) CreateControllerService(controllerService *ControllerService) error {
+	url := fmt.Sprintf("http://%s/%s/process-groups/%s/controller-services",
+		c.Config.Host, c.Config.ApiPath, controllerService.Component.ParentGroupId)
+	_, err := c.JsonCall("POST", url, controllerService, controllerService)
+	if nil != err {
+		return err
+	}
+	c.CleanupNilProperties(controllerService.Component.Properties)
+	return nil
+}
+
+func (c *Client) GetControllerService(controllerServiceId string) (*ControllerService, error) {
+	url := fmt.Sprintf("http://%s/%s/controller-services/%s",
+		c.Config.Host, c.Config.ApiPath, controllerServiceId)
+	controllerService := ControllerService{}
+	code, err := c.JsonCall("GET", url, nil, &controllerService)
+	if 404 == code {
+		return nil, fmt.Errorf("not_found")
+	}
+	if nil != err {
+		return nil, err
+	}
+	c.CleanupNilProperties(controllerService.Component.Properties)
+	return &controllerService, nil
+}
+
+func (c *Client) UpdateControllerService(controllerService *ControllerService) error {
+	url := fmt.Sprintf("http://%s/%s/controller-services/%s",
+		c.Config.Host, c.Config.ApiPath, controllerService.Component.Id)
+	_, err := c.JsonCall("PUT", url, controllerService, controllerService)
+	if nil != err {
+		return err
+	}
+	c.CleanupNilProperties(controllerService.Component.Properties)
+	return nil
+}
+
+func (c *Client) DeleteControllerService(controllerService *ControllerService) error {
+	url := fmt.Sprintf("http://%s/%s/controller-services/%s?version=%d",
+		c.Config.Host, c.Config.ApiPath, controllerService.Component.Id, controllerService.Revision.Version)
+	_, err := c.JsonCall("DELETE", url, nil, nil)
+	return err
+}
+
+func (c *Client) SetControllerServiceState(controllerService *ControllerService, state string) error {
+	stateUpdate := ControllerService{
+		Revision: Revision{
+			Version: controllerService.Revision.Version,
+		},
+		Component: ControllerServiceComponent{
+			Id:    controllerService.Component.Id,
+			State: state,
+		},
+	}
+	url := fmt.Sprintf("http://%s/%s/controller-services/%s",
+		c.Config.Host, c.Config.ApiPath, controllerService.Component.Id)
+	_, err := c.JsonCall("PUT", url, stateUpdate, controllerService)
+	return err
+}
+
+func (c *Client) EnableControllerService(controllerService *ControllerService) error {
+	return c.SetControllerServiceState(controllerService, "ENABLED")
+}
+
+func (c *Client) DisableControllerService(controllerService *ControllerService) error {
+	return c.SetControllerServiceState(controllerService, "DISABLED")
 }

@@ -100,6 +100,17 @@ resource "nifi_connection" "kafka_to_merge" {
   }
 }
 
+resource "nifi_controller_service" "aws_credentials_provider" {
+  component {
+    parent_group_id = "${nifi_process_group.kafka_to_s3.id}"
+    name = "aws_credentials_provider"
+    type = "org.apache.nifi.processors.aws.credentials.provider.service.AWSCredentialsProviderControllerService"
+
+    properties {
+    }
+  }
+}
+
 resource "nifi_processor" "put_s3_object" {
   component {
     parent_group_id = "${nifi_process_group.kafka_to_s3.id}"
@@ -117,6 +128,7 @@ resource "nifi_processor" "put_s3_object" {
         "Bucket" = "s-reporting-tmp"
         "Storage Class" = "Standard"
         "Region" = "us-east-1"
+        "AWS Credentials Provider service" = "${nifi_controller_service.aws_credentials_provider.id}"
         "Communications Timeout" = "30 secs"
         "Multipart Threshold" = "5 GB"
         "Multipart Part Size" = "5 GB"

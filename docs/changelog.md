@@ -12,6 +12,10 @@
   Production applications should consider ensuring that connections that are subject to removal are properly purged
   prior to running `terraform apply`.  
 
+## 0.3.0
+
+- Controller Services are supported. 
+
 ## 0.2.0
 
 - All processors are kept in `RUNNING` state (unconditionally).
