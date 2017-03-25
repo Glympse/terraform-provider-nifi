@@ -190,8 +190,11 @@ func (c *Client) CreateProcessor(processor *Processor) error {
 	url := fmt.Sprintf("http://%s/%s/process-groups/%s/processors",
 		c.Config.Host, c.Config.ApiPath, processor.Component.ParentGroupId)
 	_, err := c.JsonCall("POST", url, processor, processor)
+	if nil != err {
+		return err
+	}
 	c.CleanupNilProperties(processor.Component.Config.Properties)
-	return err
+	return nil
 }
 
 func (c *Client) GetProcessor(processorId string) (*Processor, error) {
@@ -223,8 +226,11 @@ func (c *Client) UpdateProcessor(processor *Processor) error {
 	url := fmt.Sprintf("http://%s/%s/processors/%s",
 		c.Config.Host, c.Config.ApiPath, processor.Component.Id)
 	_, err := c.JsonCall("PUT", url, processor, processor)
+	if nil != err {
+		return err
+	}
 	c.CleanupNilProperties(processor.Component.Config.Properties)
-	return err
+	return nil
 }
 
 func (c *Client) DeleteProcessor(processor *Processor) error {
@@ -391,8 +397,11 @@ func (c *Client) CreateControllerService(controllerService *ControllerService) e
 	url := fmt.Sprintf("http://%s/%s/process-groups/%s/controller-services",
 		c.Config.Host, c.Config.ApiPath, controllerService.Component.ParentGroupId)
 	_, err := c.JsonCall("POST", url, controllerService, controllerService)
+	if nil != err {
+		return err
+	}
 	c.CleanupNilProperties(controllerService.Component.Properties)
-	return err
+	return nil
 }
 
 func (c *Client) GetControllerService(controllerServiceId string) (*ControllerService, error) {
@@ -414,8 +423,11 @@ func (c *Client) UpdateControllerService(controllerService *ControllerService) e
 	url := fmt.Sprintf("http://%s/%s/controller-services/%s",
 		c.Config.Host, c.Config.ApiPath, controllerService.Component.Id)
 	_, err := c.JsonCall("PUT", url, controllerService, controllerService)
+	if nil != err {
+		return err
+	}
 	c.CleanupNilProperties(controllerService.Component.Properties)
-	return err
+	return nil
 }
 
 func (c *Client) DeleteControllerService(controllerService *ControllerService) error {
