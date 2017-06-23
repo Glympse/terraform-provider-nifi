@@ -12,6 +12,11 @@
   Production applications should consider ensuring that connections that are subject to removal are properly purged
   prior to running `terraform apply`.  
 
+## 0.4.0 
+
+- `groupId` parameter (required) was added to ConnectionHand object. 
+- NiFi 1.3.0 is supported. 
+
 ## 0.3.0
 
 - Controller Services are supported. 
