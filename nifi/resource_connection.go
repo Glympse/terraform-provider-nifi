@@ -39,6 +39,10 @@ func ResourceConnection() *schema.Resource {
 										Type:     schema.TypeString,
 										Required: true,
 									},
+									"group_id": {
+										Type:     schema.TypeString,
+										Required: true,
+									},
 								},
 							},
 						},
@@ -52,6 +56,10 @@ func ResourceConnection() *schema.Resource {
 										Required: true,
 									},
 									"id": {
+										Type:     schema.TypeString,
+										Required: true,
+									},
+									"group_id": {
 										Type:     schema.TypeString,
 										Required: true,
 									},
@@ -303,6 +311,7 @@ func ConnectionFromSchema(d *schema.ResourceData, connection *Connection) error 
 	source := v[0].(map[string]interface{})
 	connection.Component.Source.Type = source["type"].(string)
 	connection.Component.Source.Id = source["id"].(string)
+	connection.Component.Source.GroupId = source["group_id"].(string)
 
 	v = component["destination"].([]interface{})
 	if len(v) != 1 {
@@ -311,6 +320,7 @@ func ConnectionFromSchema(d *schema.ResourceData, connection *Connection) error 
 	destination := v[0].(map[string]interface{})
 	connection.Component.Destination.Type = destination["type"].(string)
 	connection.Component.Destination.Id = destination["id"].(string)
+	connection.Component.Destination.GroupId = destination["group_id"].(string)
 
 	selectedRelationships := []string{}
 	relationships := component["selected_relationships"].([]interface{})
@@ -357,12 +367,14 @@ func ConnectionToSchema(d *schema.ResourceData, connection *Connection) error {
 	component := []map[string]interface{}{{
 		"parent_group_id": d.Get("parent_group_id").(string),
 		"source": []map[string]interface{}{{
-			"type": connection.Component.Source.Type,
-			"id":   connection.Component.Source.Id,
+			"type": 	connection.Component.Source.Type,
+			"id":   	connection.Component.Source.Id,
+			"group_id":	connection.Component.Source.GroupId,
 		}},
 		"destination": []map[string]interface{}{{
-			"type": connection.Component.Destination.Type,
-			"id":   connection.Component.Destination.Id,
+			"type": 	connection.Component.Destination.Type,
+			"id":   	connection.Component.Destination.Id,
+			"group_id":	connection.Component.Destination.GroupId,
 		}},
 		"selected_relationships": relationships,
 		"bends":                  bends,

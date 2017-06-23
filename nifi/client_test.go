@@ -7,7 +7,7 @@ import (
 
 func TestClientProcessGroupCreate(t *testing.T) {
 	config := Config{
-		Host:    "10.0.119.99:3330",
+		Host:    "127.0.0.1:8090",
 		ApiPath: "nifi-api",
 	}
 	client := NewClient(config)
@@ -39,7 +39,7 @@ func TestClientProcessGroupCreate(t *testing.T) {
 
 func TestClientProcessorCreate(t *testing.T) {
 	config := Config{
-		Host:    "10.0.119.99:3330",
+		Host:    "127.0.0.1:8090",
 		ApiPath: "nifi-api",
 	}
 	client := NewClient(config)
@@ -96,9 +96,99 @@ func TestClientProcessorCreate(t *testing.T) {
 	assert.Nil(t, err)
 }
 
+func TestClientConnectionCreate(t *testing.T) {
+	config := Config{
+		Host:    "127.0.0.1:8090",
+		ApiPath: "nifi-api",
+	}
+	client := NewClient(config)
+
+	processor1 := Processor{
+		Revision: Revision{
+			Version: 0,
+		},
+		Component: ProcessorComponent{
+			ParentGroupId: "root",
+			Name:          "generate_flowfile",
+			Type:          "org.apache.nifi.processors.standard.GenerateFlowFile",
+			Position: &Position{
+				X: 0,
+				Y: 0,
+			},
+			Config: &ProcessorConfig{
+				SchedulingStrategy:               "TIMER_DRIVEN",
+				SchedulingPeriod:                 "0 sec",
+				ConcurrentlySchedulableTaskCount: 1,
+				Properties: map[string]interface{}{
+					"File Size":        "0B",
+					"Batch Size":       "1",
+					"Data Format":      "Text",
+					"Unique FlowFiles": "false",
+				},
+				AutoTerminatedRelationships: []string{},
+			},
+		},
+	}
+	err := client.CreateProcessor(&processor1)
+	assert.Nil(t, err)
+	assert.NotEmpty(t, processor1.Component.Id)
+
+	processor2 := Processor{
+		Revision: Revision{
+			Version: 0,
+		},
+		Component: ProcessorComponent{
+			ParentGroupId: "root",
+			Name:          "wait",
+			Type:          "org.apache.nifi.processors.standard.Wait",
+			Position: &Position{
+				X: 0,
+				Y: 0,
+			},
+			Config: &ProcessorConfig{
+				SchedulingStrategy:               "TIMER_DRIVEN",
+				SchedulingPeriod:                 "0 sec",
+				ConcurrentlySchedulableTaskCount: 1,
+				Properties: map[string]interface{}{},
+				AutoTerminatedRelationships: []string{
+					"success",
+				},
+			},
+		},
+	}
+	err = client.CreateProcessor(&processor2)
+	assert.Nil(t, err)
+	assert.NotEmpty(t, processor2.Component.Id)
+
+	connection := Connection{
+		Revision: Revision{
+			Version: 0,
+		},
+		Component: ConnectionComponent{
+			ParentGroupId: "root",
+			Source: ConnectionHand{
+				Id: processor1.Component.Id,
+				Type: "PROCESSOR",
+				GroupId: "root",
+			},
+			Destination: ConnectionHand{
+				Id: processor2.Component.Id,
+				Type: "PROCESSOR",
+				GroupId: "root",
+			},
+			SelectedRelationships:[]string{
+				"success",
+			},
+		},
+	}
+	err = client.CreateConnection(&connection)
+	assert.Nil(t, err)
+	assert.NotEmpty(t, connection.Component.Id)
+}
+
 func TestClientControllerServiceCreate(t *testing.T) {
 	config := Config{
-		Host:    "10.0.119.99:3330",
+		Host:    "127.0.0.1:8090",
 		ApiPath: "nifi-api",
 	}
 	client := NewClient(config)

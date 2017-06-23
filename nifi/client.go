@@ -267,8 +267,9 @@ func (c *Client) StopProcessor(processor *Processor) error {
 // Connection section
 
 type ConnectionHand struct {
-	Type string `json:"type"`
-	Id   string `json:"id"`
+	Type 	string `json:"type"`
+	Id   	string `json:"id"`
+	GroupId	string `json:"groupId"`
 }
 
 type ConnectionComponent struct {
