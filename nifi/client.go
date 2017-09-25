@@ -461,3 +461,104 @@ func (c *Client) EnableControllerService(controllerService *ControllerService) e
 func (c *Client) DisableControllerService(controllerService *ControllerService) error {
 	return c.SetControllerServiceState(controllerService, "DISABLED")
 }
+
+//User Tennants
+type UserComponent struct {
+	Id            string                  `json:"id,omitempty"`
+	ParentGroupId string                  `json:"parentGroupId,omitempty"`
+	Identity          string                  `json:"identity,omitempty"`
+	Position      *Position               `json:"position,omitempty"`
+}
+type User struct {
+	Revision  Revision           `json:"revision"`
+	Component UserComponent `json:"component"`
+}
+func UserStub() *User {
+	return &User{
+		Component: UserComponent{
+			Position: &Position{},
+		},
+	}
+}
+func (c *Client) CreateUser(user *User) error {
+	url := fmt.Sprintf("http://%s/%s/tenants/users",
+		c.Config.Host, c.Config.ApiPath)
+	_, err := c.JsonCall("POST", url, user, user)
+	return err
+}
+func (c *Client) GetUser(userId string) (*User, error) {
+	url := fmt.Sprintf("http://%s/%s/tenants/users/%s",
+		c.Config.Host, c.Config.ApiPath, userId)
+	user := UserStub()
+	code, err := c.JsonCall("GET", url, nil, &user)
+	if 404 == code {
+		return nil, fmt.Errorf("not_found")
+	}
+	if nil != err {
+		return nil, err
+	}
+	return user, nil
+}
+
+func (c *Client) DeleteUser(user *User) error {
+	url := fmt.Sprintf("http://%s/%s/tenants/users/%s?version=%d",
+		c.Config.Host, c.Config.ApiPath, user.Component.Id, user.Revision.Version)
+	_, err := c.JsonCall("DELETE", url, nil, nil)
+	return err
+}
+
+//Group Tennants
+type GroupComponent struct {
+	Id            string                  `json:"id,omitempty"`
+	ParentGroupId string                  `json:"parentGroupId,omitempty"`
+	Identity          string                  `json:"identity,omitempty"`
+	Position      *Position               `json:"position,omitempty"`
+	Users    	[]*User									`json:"users"`
+}
+type Group struct {
+	Revision  Revision           `json:"revision"`
+	Component GroupComponent `json:"component"`
+}
+func GroupStub() *Group {
+	return &Group{
+		Component: GroupComponent{
+			Position: &Position{},
+			Users:    []*User{},
+		},
+	}
+}
+func (c *Client) CreateGroup(group *Group) error {
+	url := fmt.Sprintf("http://%s/%s/tenants/user-groups",
+		c.Config.Host, c.Config.ApiPath)
+	_, err := c.JsonCall("POST", url, group, group)
+	return err
+}
+func (c *Client) GetGroup(groupId string) (*Group, error) {
+	url := fmt.Sprintf("http://%s/%s/tenants/user-groups/%s",
+		c.Config.Host, c.Config.ApiPath, groupId)
+	group := GroupStub()
+	code, err := c.JsonCall("GET", url, nil, &group)
+	if 404 == code {
+		return nil, fmt.Errorf("not_found")
+	}
+	if nil != err {
+		return nil, err
+	}
+	return group, nil
+}
+func (c *Client) UpdateGroup(group *Group) error {
+	url := fmt.Sprintf("http://%s/%s/tenants/user-groups/%s",
+		c.Config.Host, c.Config.ApiPath, group.Component.Id)
+	_, err := c.JsonCall("PUT", url, group, group)
+	if nil != err {
+		return err
+	}
+	return nil
+}
+func (c *Client) DeleteGroup(group *Group) error {
+	url := fmt.Sprintf("http://%s/%s/tenants/user-groups/%s?version=%d",
+		c.Config.Host, c.Config.ApiPath, group.Component.Id, group.Revision.Version)
+	_, err := c.JsonCall("DELETE", url, nil, nil)
+	return err
+}
+
