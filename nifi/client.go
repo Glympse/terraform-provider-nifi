@@ -21,11 +21,13 @@ type Client struct {
 	// This breaks Terraform model to some extent but at the same time is unavoidable in NiFi world.
 	// Currently only flows that involve cross-resource interactions are wrapped into lock/unlock sections.
 	// Most of operations can still be performed in parallel.
+	HttpScheme string
 	Lock sync.Mutex
 }
 
 func NewClient(config Config) *Client {
 	http_client := &http.Client{}
+	scheme := "http"
 	if config.AdminCertPath != "" && config.AdminKeyPath != "" {
 		cert, err := tls.LoadX509KeyPair(config.AdminCertPath, config.AdminKeyPath)
 		if err != nil {
@@ -38,11 +40,13 @@ func NewClient(config Config) *Client {
 			tlsConfig.InsecureSkipVerify = true
 			transport := &http.Transport{TLSClientConfig: tlsConfig}
 			http_client = &http.Client{Transport: transport}
+			scheme = "https"
 		}
 	}
 	client := &Client{
 		Config: config,
 		Client: http_client,
+		HttpScheme: scheme
 	}
 	return client
 }
@@ -499,14 +503,14 @@ func UserStub() *User {
 	}
 }
 func (c *Client) CreateUser(user *User) error {
-	url := fmt.Sprintf("https://%s/%s/tenants/users",
-		c.Config.Host, c.Config.ApiPath)
+	url := fmt.Sprintf("%s://%s/%s/tenants/users",
+		c.HttpScheme, c.Config.Host, c.Config.ApiPath)
 	_, err := c.JsonCall("POST", url, user, user)
 	return err
 }
 func (c *Client) GetUser(userId string) (*User, error) {
-	url := fmt.Sprintf("https://%s/%s/tenants/users/%s",
-		c.Config.Host, c.Config.ApiPath, userId)
+	url := fmt.Sprintf("%s://%s/%s/tenants/users/%s",
+		c.HttpScheme, c.Config.Host, c.Config.ApiPath, userId)
 	user := UserStub()
 	code, err := c.JsonCall("GET", url, nil, &user)
 	if 404 == code {
@@ -519,8 +523,8 @@ func (c *Client) GetUser(userId string) (*User, error) {
 }
 
 func (c *Client) DeleteUser(user *User) error {
-	url := fmt.Sprintf("https://%s/%s/tenants/users/%s?version=%d",
-		c.Config.Host, c.Config.ApiPath, user.Component.Id, user.Revision.Version)
+	url := fmt.Sprintf("%s://%s/%s/tenants/users/%s?version=%d",
+		c.HttpScheme, c.Config.Host, c.Config.ApiPath, user.Component.Id, user.Revision.Version)
 	_, err := c.JsonCall("DELETE", url, nil, nil)
 	return err
 }
@@ -547,14 +551,14 @@ func GroupStub() *Group {
 	}
 }
 func (c *Client) CreateGroup(group *Group) error {
-	url := fmt.Sprintf("https://%s/%s/tenants/user-groups",
-		c.Config.Host, c.Config.ApiPath)
+	url := fmt.Sprintf("%s://%s/%s/tenants/user-groups",
+		c.HttpScheme, c.Config.Host, c.Config.ApiPath)
 	_, err := c.JsonCall("POST", url, group, group)
 	return err
 }
 func (c *Client) GetGroup(groupId string) (*Group, error) {
-	url := fmt.Sprintf("https://%s/%s/tenants/user-groups/%s",
-		c.Config.Host, c.Config.ApiPath, groupId)
+	url := fmt.Sprintf("%s://%s/%s/tenants/user-groups/%s",
+		c.HttpScheme, c.Config.Host, c.Config.ApiPath, groupId)
 	group := GroupStub()
 	code, err := c.JsonCall("GET", url, nil, &group)
 	if 404 == code {
@@ -566,8 +570,8 @@ func (c *Client) GetGroup(groupId string) (*Group, error) {
 	return group, nil
 }
 func (c *Client) UpdateGroup(group *Group) error {
-	url := fmt.Sprintf("https://%s/%s/tenants/user-groups/%s",
-		c.Config.Host, c.Config.ApiPath, group.Component.Id)
+	url := fmt.Sprintf("%s://%s/%s/tenants/user-groups/%s",
+		c.HttpScheme, c.Config.Host, c.Config.ApiPath, group.Component.Id)
 	_, err := c.JsonCall("PUT", url, group, group)
 	if nil != err {
 		return err
@@ -575,7 +579,7 @@ func (c *Client) UpdateGroup(group *Group) error {
 	return nil
 }
 func (c *Client) DeleteGroup(group *Group) error {
-	url := fmt.Sprintf("https://%s/%s/tenants/user-groups/%s?version=%d",
+	url := fmt.Sprintf("%s://%s/%s/tenants/user-groups/%s?version=%d",
 		c.Config.Host, c.Config.ApiPath, group.Component.Id, group.Revision.Version)
 	_, err := c.JsonCall("DELETE", url, nil, nil)
 	return err
