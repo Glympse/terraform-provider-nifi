@@ -2,6 +2,7 @@ package nifi
 
 import (
 	"bytes"
+	"crypto/tls"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -24,10 +25,27 @@ type Client struct {
 }
 
 func NewClient(config Config) *Client {
-	return &Client{
-		Config: config,
-		Client: &http.Client{},
+	if config.AdminCertPath != nil && config.AdminKeyPath != nil {
+		cert, err := tls.LoadX509KeyPair(config.AdminCertPath, config.AdminKeyPath)
+		if err != nil {
+			log.Fatal(err)
+			http_client := &http.Client{}
+		} else {
+			tlsConfig := &tls.Config{
+				Certificates: []tls.Certificate{cert},
+			}
+			tlsConfig.BuildNameToCertificate()
+			transport := &http.Transport{TLSClientConfig: tlsConfig}
+			http_client := &http.Client{Transport: transport}
+		}
+	} else {
+		http_client := &http.Client{}
 	}
+	client := &Client{
+		Config: config,
+		Client: http_client,
+	}
+	return client
 }
 
 // Common section
@@ -267,9 +285,9 @@ func (c *Client) StopProcessor(processor *Processor) error {
 // Connection section
 
 type ConnectionHand struct {
-	Type 	string `json:"type"`
-	Id   	string `json:"id"`
-	GroupId	string `json:"groupId"`
+	Type    string `json:"type"`
+	Id      string `json:"id"`
+	GroupId string `json:"groupId"`
 }
 
 type ConnectionComponent struct {
@@ -464,15 +482,16 @@ func (c *Client) DisableControllerService(controllerService *ControllerService) 
 
 //User Tennants
 type UserComponent struct {
-	Id            string                  `json:"id,omitempty"`
-	ParentGroupId string                  `json:"parentGroupId,omitempty"`
-	Identity          string                  `json:"identity,omitempty"`
-	Position      *Position               `json:"position,omitempty"`
+	Id            string    `json:"id,omitempty"`
+	ParentGroupId string    `json:"parentGroupId,omitempty"`
+	Identity      string    `json:"identity,omitempty"`
+	Position      *Position `json:"position,omitempty"`
 }
 type User struct {
-	Revision  Revision           `json:"revision"`
+	Revision  Revision      `json:"revision"`
 	Component UserComponent `json:"component"`
 }
+
 func UserStub() *User {
 	return &User{
 		Component: UserComponent{
@@ -509,16 +528,17 @@ func (c *Client) DeleteUser(user *User) error {
 
 //Group Tennants
 type GroupComponent struct {
-	Id            string                  `json:"id,omitempty"`
-	ParentGroupId string                  `json:"parentGroupId,omitempty"`
-	Identity          string                  `json:"identity,omitempty"`
-	Position      *Position               `json:"position,omitempty"`
-	Users    	[]*User									`json:"users"`
+	Id            string    `json:"id,omitempty"`
+	ParentGroupId string    `json:"parentGroupId,omitempty"`
+	Identity      string    `json:"identity,omitempty"`
+	Position      *Position `json:"position,omitempty"`
+	Users         []*User   `json:"users"`
 }
 type Group struct {
-	Revision  Revision           `json:"revision"`
+	Revision  Revision       `json:"revision"`
 	Component GroupComponent `json:"component"`
 }
+
 func GroupStub() *Group {
 	return &Group{
 		Component: GroupComponent{
@@ -561,4 +581,3 @@ func (c *Client) DeleteGroup(group *Group) error {
 	_, err := c.JsonCall("DELETE", url, nil, nil)
 	return err
 }
-

@@ -1,8 +1,9 @@
 package nifi
 
 import (
-	"github.com/stretchr/testify/assert"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func TestClientProcessGroupCreate(t *testing.T) {
@@ -149,7 +150,7 @@ func TestClientConnectionCreate(t *testing.T) {
 				SchedulingStrategy:               "TIMER_DRIVEN",
 				SchedulingPeriod:                 "0 sec",
 				ConcurrentlySchedulableTaskCount: 1,
-				Properties: map[string]interface{}{},
+				Properties:                       map[string]interface{}{},
 				AutoTerminatedRelationships: []string{
 					"success",
 				},
@@ -167,16 +168,16 @@ func TestClientConnectionCreate(t *testing.T) {
 		Component: ConnectionComponent{
 			ParentGroupId: "root",
 			Source: ConnectionHand{
-				Id: processor1.Component.Id,
-				Type: "PROCESSOR",
+				Id:      processor1.Component.Id,
+				Type:    "PROCESSOR",
 				GroupId: "root",
 			},
 			Destination: ConnectionHand{
-				Id: processor2.Component.Id,
-				Type: "PROCESSOR",
+				Id:      processor2.Component.Id,
+				Type:    "PROCESSOR",
 				GroupId: "root",
 			},
-			SelectedRelationships:[]string{
+			SelectedRelationships: []string{
 				"success",
 			},
 		},
@@ -239,4 +240,35 @@ func TestClientControllerServiceCreate(t *testing.T) {
 
 	client.DeleteProcessGroup(&processGroup)
 	assert.Nil(t, err)
+}
+
+func TestClientUserCreate(t *testing.T) {
+	config := Config{
+		Host:    "127.0.0.1:9443",
+		ApiPath: "nifi-api",
+		AdminCertPath: "/opt/nifi-toolkit/target/nifi-cert.pem",
+		AdminKeyPath: "/opt/nifi-toolkit/target/nifi-key.key"
+	}
+	client := NewClient(config)
+
+	user := User{
+		Revision: Revision{
+			Version: 0,
+		},
+		Component: UserComponent{
+			ParentGroupId: "root",
+			Identity:      "test_user",
+			Position: Position{
+				X: 0,
+				Y: 0,
+			},
+		},
+	}
+	client.CreateUser(&user)
+	assert.NotEmpty(t, user.Component.Id)
+
+	processGroup2, err := client.GetUser(user.Component.Id)
+	assert.Equal(t, err, nil)
+	assert.NotEmpty(t, user.Component.Id)
+
 }
