@@ -35,10 +35,10 @@ func Provider() terraform.ResourceProvider {
 
 func providerConfigure(d *schema.ResourceData) (interface{}, error) {
 	config := Config{
-		Host:    d.Get("host").(string),
-		ApiPath: d.Get("api_path").(string),
-		AdminCertPath : d.get("admin_cert").(string),
-		AdminKeyPath: d.get("admin_key").(string)
+		Host:          d.Get("host").(string),
+		ApiPath:       d.Get("api_path").(string),
+		AdminCertPath: d.get("admin_cert").(string),
+		AdminKeyPath:  d.get("admin_key").(string),
 	}
 	client := NewClient(config)
 	return client, nil
