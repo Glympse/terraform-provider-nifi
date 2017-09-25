@@ -25,21 +25,22 @@ type Client struct {
 }
 
 func NewClient(config Config) *Client {
-	if config.AdminCertPath != nil && config.AdminKeyPath != nil {
+	http_client : = nil
+	if config.AdminCertPath != "" && config.AdminKeyPath != "" {
 		cert, err := tls.LoadX509KeyPair(config.AdminCertPath, config.AdminKeyPath)
 		if err != nil {
 			log.Fatal(err)
-			http_client := &http.Client{}
+			http_client = &http.Client{}
 		} else {
 			tlsConfig := &tls.Config{
 				Certificates: []tls.Certificate{cert},
 			}
 			tlsConfig.BuildNameToCertificate()
 			transport := &http.Transport{TLSClientConfig: tlsConfig}
-			http_client := &http.Client{Transport: transport}
+			http_client = &http.Client{Transport: transport}
 		}
 	} else {
-		http_client := &http.Client{}
+		http_client = &http.Client{}
 	}
 	client := &Client{
 		Config: config,
