@@ -35,6 +35,7 @@ func NewClient(config Config) *Client {
 				Certificates: []tls.Certificate{cert},
 			}
 			tlsConfig.BuildNameToCertificate()
+			tlsConfig.InsecureSkipVerify = true
 			transport := &http.Transport{TLSClientConfig: tlsConfig}
 			http_client = &http.Client{Transport: transport}
 		}
@@ -498,13 +499,13 @@ func UserStub() *User {
 	}
 }
 func (c *Client) CreateUser(user *User) error {
-	url := fmt.Sprintf("http://%s/%s/tenants/users",
+	url := fmt.Sprintf("https://%s/%s/tenants/users",
 		c.Config.Host, c.Config.ApiPath)
 	_, err := c.JsonCall("POST", url, user, user)
 	return err
 }
 func (c *Client) GetUser(userId string) (*User, error) {
-	url := fmt.Sprintf("http://%s/%s/tenants/users/%s",
+	url := fmt.Sprintf("https://%s/%s/tenants/users/%s",
 		c.Config.Host, c.Config.ApiPath, userId)
 	user := UserStub()
 	code, err := c.JsonCall("GET", url, nil, &user)
@@ -518,7 +519,7 @@ func (c *Client) GetUser(userId string) (*User, error) {
 }
 
 func (c *Client) DeleteUser(user *User) error {
-	url := fmt.Sprintf("http://%s/%s/tenants/users/%s?version=%d",
+	url := fmt.Sprintf("https://%s/%s/tenants/users/%s?version=%d",
 		c.Config.Host, c.Config.ApiPath, user.Component.Id, user.Revision.Version)
 	_, err := c.JsonCall("DELETE", url, nil, nil)
 	return err
@@ -546,13 +547,13 @@ func GroupStub() *Group {
 	}
 }
 func (c *Client) CreateGroup(group *Group) error {
-	url := fmt.Sprintf("http://%s/%s/tenants/user-groups",
+	url := fmt.Sprintf("https://%s/%s/tenants/user-groups",
 		c.Config.Host, c.Config.ApiPath)
 	_, err := c.JsonCall("POST", url, group, group)
 	return err
 }
 func (c *Client) GetGroup(groupId string) (*Group, error) {
-	url := fmt.Sprintf("http://%s/%s/tenants/user-groups/%s",
+	url := fmt.Sprintf("https://%s/%s/tenants/user-groups/%s",
 		c.Config.Host, c.Config.ApiPath, groupId)
 	group := GroupStub()
 	code, err := c.JsonCall("GET", url, nil, &group)
@@ -565,7 +566,7 @@ func (c *Client) GetGroup(groupId string) (*Group, error) {
 	return group, nil
 }
 func (c *Client) UpdateGroup(group *Group) error {
-	url := fmt.Sprintf("http://%s/%s/tenants/user-groups/%s",
+	url := fmt.Sprintf("https://%s/%s/tenants/user-groups/%s",
 		c.Config.Host, c.Config.ApiPath, group.Component.Id)
 	_, err := c.JsonCall("PUT", url, group, group)
 	if nil != err {
@@ -574,7 +575,7 @@ func (c *Client) UpdateGroup(group *Group) error {
 	return nil
 }
 func (c *Client) DeleteGroup(group *Group) error {
-	url := fmt.Sprintf("http://%s/%s/tenants/user-groups/%s?version=%d",
+	url := fmt.Sprintf("https://%s/%s/tenants/user-groups/%s?version=%d",
 		c.Config.Host, c.Config.ApiPath, group.Component.Id, group.Revision.Version)
 	_, err := c.JsonCall("DELETE", url, nil, nil)
 	return err

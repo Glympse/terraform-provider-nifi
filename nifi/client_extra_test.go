@@ -1,16 +1,18 @@
 package nifi
 
 import (
+	"log"
 	"testing"
+
 	"github.com/stretchr/testify/assert"
 )
 
 func TestClientUserCreate(t *testing.T) {
 	config := Config{
-		Host:    "127.0.0.1:9443",
-		ApiPath: "nifi-api",
-		AdminCertPath: "/opt/nifi-toolkit/target/nifi-cert.pem",
-		AdminKeyPath: "/opt/nifi-toolkit/target/nifi-key.key"
+		Host:          "127.0.0.1:9443",
+		ApiPath:       "nifi-api",
+		AdminCertPath: "/opt/nifi-toolkit/target/nifi-admin.pem",
+		AdminKeyPath:  "/opt/nifi-toolkit/target/nifi-admin.key",
 	}
 	client := NewClient(config)
 
@@ -21,17 +23,21 @@ func TestClientUserCreate(t *testing.T) {
 		Component: UserComponent{
 			ParentGroupId: "root",
 			Identity:      "test_user",
-			Position: Position{
+			Position: &Position{
 				X: 0,
 				Y: 0,
 			},
 		},
 	}
-	client.CreateUser(&user)
+	err_create := client.CreateUser(&user)
+	if err_create != nil {
+		log.Fatal(err_create)
+	} else {
+		log.Println(user.Component.Id)
+	}
 	assert.NotEmpty(t, user.Component.Id)
-
-	processGroup2, err := client.GetUser(user.Component.Id)
+	user2, err := client.GetUser(user.Component.Id)
 	assert.Equal(t, err, nil)
-	assert.NotEmpty(t, user.Component.Id)
-
+	log.Println(user2.Component.Id)
+	assert.NotEmpty(t, user2.Component.Id)
 }
