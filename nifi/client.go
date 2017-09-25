@@ -22,7 +22,7 @@ type Client struct {
 	// Currently only flows that involve cross-resource interactions are wrapped into lock/unlock sections.
 	// Most of operations can still be performed in parallel.
 	HttpScheme string
-	Lock sync.Mutex
+	Lock       sync.Mutex
 }
 
 func NewClient(config Config) *Client {
@@ -44,9 +44,9 @@ func NewClient(config Config) *Client {
 		}
 	}
 	client := &Client{
-		Config: config,
-		Client: http_client,
-		HttpScheme: scheme
+		Config:     config,
+		Client:     http_client,
+		HttpScheme: scheme,
 	}
 	return client
 }
