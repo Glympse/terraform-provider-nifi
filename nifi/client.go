@@ -606,7 +606,7 @@ func (c *Client) UpdateGroup(group *Group) error {
 }
 func (c *Client) DeleteGroup(group *Group) error {
 	url := fmt.Sprintf("%s://%s/%s/tenants/user-groups/%s?version=%d",
-		c.Config.Host, c.Config.ApiPath, group.Component.Id, group.Revision.Version)
+		c.HttpScheme, c.Config.Host, c.Config.ApiPath, group.Component.Id, group.Revision.Version)
 	_, err := c.JsonCall("DELETE", url, nil, nil)
 	return err
 }
