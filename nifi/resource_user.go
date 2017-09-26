@@ -8,10 +8,11 @@ import (
 )
 
 func ResourceUser() *schema.Resource {
+	log.Println("ResourceUser")
 	return &schema.Resource{
 		Create: ResourceUserCreate,
 		Read:   ResourceUserRead,
-		Update: nil,
+		Update: ResourceUserUpdate,
 		Delete: ResourceUserDelete,
 		Exists: ResourceUserExists,
 
@@ -40,6 +41,7 @@ func ResourceUser() *schema.Resource {
 }
 
 func ResourceUserCreate(d *schema.ResourceData, meta interface{}) error {
+	log.Println("ResourceUserCreate")
 	user := User{}
 	user.Revision.Version = 0
 
@@ -64,6 +66,7 @@ func ResourceUserCreate(d *schema.ResourceData, meta interface{}) error {
 }
 
 func ResourceUserRead(d *schema.ResourceData, meta interface{}) error {
+	log.Println("ResourceUserRead")
 	userId := d.Id()
 
 	client := meta.(*Client)
@@ -81,6 +84,7 @@ func ResourceUserRead(d *schema.ResourceData, meta interface{}) error {
 }
 
 func ResourceUserUpdate(d *schema.ResourceData, meta interface{}) error {
+	log.Println("ResourceUserUpdate")
 	client := meta.(*Client)
 	client.Lock.Lock()
 	log.Printf("[INFO] Updating User: %s..., not implemented", d.Id())
@@ -125,6 +129,7 @@ func ResourceUserDeleteInternal(d *schema.ResourceData, meta interface{}) error 
 }
 
 func ResourceUserExists(d *schema.ResourceData, meta interface{}) (bool, error) {
+	log.Println("ResourceUserExists")
 	userId := d.Id()
 
 	client := meta.(*Client)
@@ -145,6 +150,7 @@ func ResourceUserExists(d *schema.ResourceData, meta interface{}) (bool, error) 
 // Schema Helpers
 
 func UserFromSchema(d *schema.ResourceData, user *User) error {
+	log.Println("ResourceUserFromSchema")
 	v := d.Get("component").([]interface{})
 	if len(v) != 1 {
 		return fmt.Errorf("Exactly one component is required")
@@ -165,6 +171,7 @@ func UserFromSchema(d *schema.ResourceData, user *User) error {
 }
 
 func UserToSchema(d *schema.ResourceData, user *User) error {
+	log.Println("ResourceUserToSchema")
 	revision := []map[string]interface{}{{
 		"version": user.Revision.Version,
 	}}
