@@ -27,6 +27,7 @@ func Provider() terraform.ResourceProvider {
 			"nifi_processor":          ResourceProcessor(),
 			"nifi_connection":         ResourceConnection(),
 			"nifi_controller_service": ResourceControllerService(),
+			"nifi_user":               ResourceUser(),
 		},
 
 		ConfigureFunc: providerConfigure,

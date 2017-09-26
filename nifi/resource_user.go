@@ -25,12 +25,13 @@ func ResourceUser() *schema.Resource {
 					Schema: map[string]*schema.Schema{
 						"parent_group_id": {
 							Type:     schema.TypeString,
-							Required: true,
+							Required: false,
 						},
 						"identity": {
 							Type:     schema.TypeString,
 							Required: true,
 						},
+						"position": SchemaPosition(),
 					},
 				},
 			},
@@ -169,14 +170,13 @@ func UserToSchema(d *schema.ResourceData, user *User) error {
 	}}
 	d.Set("revision", revision)
 	component := []map[string]interface{}{{
-		"parent_group_id": d.Get("parent_group_id").(string),
+		"parent_group_id": interface{}(user.Component.ParentGroupId).(string),
 		"position": []map[string]interface{}{{
 			"x": user.Component.Position.X,
 			"y": user.Component.Position.Y,
 		}},
-		"identity": user.Component.Identity,
+		"identity": interface{}(user.Component.Identity).(string),
 	}}
 	d.Set("component", component)
-
 	return nil
 }
