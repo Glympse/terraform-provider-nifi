@@ -2,8 +2,9 @@ package nifi
 
 import (
 	"fmt"
-	"github.com/hashicorp/terraform/helper/schema"
 	"log"
+
+	"github.com/hashicorp/terraform/helper/schema"
 )
 
 func ResourceUser() *schema.Resource {
@@ -27,7 +28,7 @@ func ResourceUser() *schema.Resource {
 							Required: true,
 						},
 						"identity": {
-							Type: schema.TypeString,
+							Type:     schema.TypeString,
 							Required: true,
 						},
 					},
@@ -61,7 +62,6 @@ func ResourceUserCreate(d *schema.ResourceData, meta interface{}) error {
 	return ResourceUserRead(d, meta)
 }
 
-
 func ResourceUserRead(d *schema.ResourceData, meta interface{}) error {
 	userId := d.Id()
 
@@ -87,8 +87,6 @@ func ResourceUserUpdate(d *schema.ResourceData, meta interface{}) error {
 	defer client.Lock.Unlock()
 	return nil
 }
-
-
 
 func ResourceUserDelete(d *schema.ResourceData, meta interface{}) error {
 	client := meta.(*Client)
@@ -143,8 +141,6 @@ func ResourceUserExists(d *schema.ResourceData, meta interface{}) (bool, error) 
 	return true, nil
 }
 
-
-
 // Schema Helpers
 
 func UserFromSchema(d *schema.ResourceData, user *User) error {
@@ -175,7 +171,7 @@ func UserToSchema(d *schema.ResourceData, user *User) error {
 	component := []map[string]interface{}{{
 		"parent_group_id": d.Get("parent_group_id").(string),
 		"position": []map[string]interface{}{{
-			"x":       user.Component.Position.X,
+			"x": user.Component.Position.X,
 			"y": user.Component.Position.Y,
 		}},
 		"identity": user.Component.Identity,

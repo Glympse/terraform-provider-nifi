@@ -2,8 +2,9 @@ package nifi
 
 import (
 	"fmt"
-	"github.com/hashicorp/terraform/helper/schema"
 	"log"
+
+	"github.com/hashicorp/terraform/helper/schema"
 )
 
 func ResourceGroup() *schema.Resource {
@@ -27,7 +28,7 @@ func ResourceGroup() *schema.Resource {
 							Required: true,
 						},
 						"identity": {
-							Type: schema.TypeString,
+							Type:     schema.TypeString,
 							Required: true,
 						},
 						"users": {
@@ -64,7 +65,6 @@ func ResourceGroupCreate(d *schema.ResourceData, meta interface{}) error {
 
 	return ResourceUserRead(d, meta)
 }
-
 
 func ResourceGroupRead(d *schema.ResourceData, meta interface{}) error {
 	groupId := d.Id()
@@ -107,7 +107,6 @@ func ResourceGroupUpdateInternal(d *schema.ResourceData, meta interface{}) error
 		}
 	}
 
-
 	// Load group's desired state
 	err = GroupFromSchema(meta, d, group)
 	if err != nil {
@@ -122,8 +121,6 @@ func ResourceGroupUpdateInternal(d *schema.ResourceData, meta interface{}) error
 
 	return ResourceGroupRead(d, meta)
 }
-
-
 
 func ResourceGroupDelete(d *schema.ResourceData, meta interface{}) error {
 	client := meta.(*Client)
@@ -178,8 +175,6 @@ func ResourceGroupExists(d *schema.ResourceData, meta interface{}) (bool, error)
 	return true, nil
 }
 
-
-
 // Schema Helpers
 
 func GroupFromSchema(meta interface{}, d *schema.ResourceData, group *Group) error {
@@ -197,12 +192,12 @@ func GroupFromSchema(meta interface{}, d *schema.ResourceData, group *Group) err
 	}
 	position := v[0].(map[string]interface{})
 	group.Component.Position.X = position["x"].(float64)
-    group.Component.Position.Y = position["y"].(float64)
+	group.Component.Position.Y = position["y"].(float64)
 
-	v = component["users"].([] interface{})
+	v = component["users"].([]interface{})
 	client := meta.(*Client)
-	users := []*User{}
-	for i:=0 ; i<len(v); i++ {
+	users := []*Tenant{}
+	for i := 0; i < len(v); i++ {
 		user_id := v[i].(string)
 		user, err := client.GetUser(user_id)
 		if err != nil {
@@ -211,8 +206,8 @@ func GroupFromSchema(meta interface{}, d *schema.ResourceData, group *Group) err
 			} else {
 				return fmt.Errorf("Error retrieving User: %s", user_id)
 			}
-		}else {
-			users = append(users, user)
+		} else {
+			users = append(users, user.ToTenant())
 		}
 	}
 	group.Component.Users = users
@@ -227,18 +222,18 @@ func GroupToSchema(d *schema.ResourceData, group *Group) error {
 
 	v := group.Component.Users
 	user_ids := []string{}
-	for i:=0; i<len(v); i++ {
-		user := v[i]
-		user_ids = append(user_ids,user.Component.Id)
+	for i := 0; i < len(v); i++ {
+		tenant := v[i]
+		user_ids = append(user_ids, tenant.Id)
 	}
 	component := []map[string]interface{}{{
 		"parent_group_id": d.Get("parent_group_id").(string),
 		"position": []map[string]interface{}{{
-			"x":       group.Component.Position.X,
+			"x": group.Component.Position.X,
 			"y": group.Component.Position.Y,
 		}},
 		"identity": group.Component.Identity,
-		"users":  user_ids,
+		"users":    user_ids,
 	}}
 	d.Set("component", component)
 

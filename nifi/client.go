@@ -484,17 +484,34 @@ func (c *Client) DisableControllerService(controllerService *ControllerService) 
 }
 
 //User Tennants
+type Tenant struct {
+	Id string `json:"id"`
+}
 type UserComponent struct {
 	Id            string    `json:"id,omitempty"`
 	ParentGroupId string    `json:"parentGroupId,omitempty"`
 	Identity      string    `json:"identity,omitempty"`
 	Position      *Position `json:"position,omitempty"`
 }
+
+func (uc UserComponent) String() string {
+	return fmt.Sprintf("Id:%v ParentGroupID:%v, Identity:%v", uc.Id, uc.ParentGroupId, uc.Identity)
+}
+
+func (u User) ToTenant() *Tenant {
+	return &Tenant{
+		Id: u.Component.Id,
+	}
+}
+
 type User struct {
 	Revision  Revision      `json:"revision"`
 	Component UserComponent `json:"component"`
 }
 
+func (u User) String() string {
+	return fmt.Sprintf("User: {Component :{%v}}", u.Component)
+}
 func UserStub() *User {
 	return &User{
 		Component: UserComponent{
@@ -535,18 +552,27 @@ type GroupComponent struct {
 	ParentGroupId string    `json:"parentGroupId,omitempty"`
 	Identity      string    `json:"identity,omitempty"`
 	Position      *Position `json:"position,omitempty"`
-	Users         []*User   `json:"users"`
+	Users         []*Tenant `json:"users"`
 }
+
+func (c GroupComponent) String() string {
+	return fmt.Sprintf("Id: %v ParentGroupID: %v, Identity: %v, Users:[%v]", c.Id, c.ParentGroupId, c.Identity, c.Users)
+}
+
 type Group struct {
 	Revision  Revision       `json:"revision"`
 	Component GroupComponent `json:"component"`
+}
+
+func (c Group) String() string {
+	return fmt.Sprintf("Group: { Component:{ %v } }", c.Component)
 }
 
 func GroupStub() *Group {
 	return &Group{
 		Component: GroupComponent{
 			Position: &Position{},
-			Users:    []*User{},
+			Users:    []*Tenant{},
 		},
 	}
 }
