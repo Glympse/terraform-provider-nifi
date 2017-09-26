@@ -30,17 +30,21 @@ func TestClientUserCreate(t *testing.T) {
 			},
 		},
 	}
-	err_create := client.CreateUser(&user)
-	if err_create != nil {
-		log.Fatal(err_create)
+	err := client.CreateUser(&user)
+	assert.Equal(t, err, nil)
+	if err != nil {
+		log.Fatal(err)
 	} else {
 		log.Println(user.Component.Id)
 	}
 	assert.NotEmpty(t, user.Component.Id)
-	user2, err := client.GetUser(user.Component.Id)
-	assert.Equal(t, err, nil)
+	user2, err2 := client.GetUser(user.Component.Id)
+	assert.Equal(t, err2, nil)
 	log.Println(user2.Component.Id)
 	assert.NotEmpty(t, user2.Component.Id)
+
+	err = client.DeleteUser(user2)
+	assert.Equal(t, err, nil)
 }
 
 func TestClientGroupCreate(t *testing.T) {
