@@ -26,7 +26,7 @@ func ResourceUser() *schema.Resource {
 					Schema: map[string]*schema.Schema{
 						"parent_group_id": {
 							Type:     schema.TypeString,
-							Required: false,
+							Required: true,
 						},
 						"identity": {
 							Type:     schema.TypeString,
@@ -42,10 +42,10 @@ func ResourceUser() *schema.Resource {
 
 func ResourceUserCreate(d *schema.ResourceData, meta interface{}) error {
 	log.Println("ResourceUserCreate")
-	user := User{}
+	user := UserStub()
 	user.Revision.Version = 0
 
-	err := UserFromSchema(d, &user)
+	err := UserFromSchema(d, user)
 	if err != nil {
 		return fmt.Errorf("Failed to parse User schema")
 	}
@@ -53,9 +53,9 @@ func ResourceUserCreate(d *schema.ResourceData, meta interface{}) error {
 
 	// Create user
 	client := meta.(*Client)
-	err = client.CreateUser(&user)
+	err = client.CreateUser(user)
 	if err != nil {
-		return fmt.Errorf("Failed to create Connection")
+		return fmt.Errorf("Failed to create User %v", err)
 	}
 
 	// Indicate successful creation
@@ -164,6 +164,7 @@ func UserFromSchema(d *schema.ResourceData, user *User) error {
 		return fmt.Errorf("Exactly one component.position is required")
 	}
 	position := v[0].(map[string]interface{})
+	log.Printf("[DEBUG] ****************************** %#v", position)
 	user.Component.Position.X = position["x"].(float64)
 	user.Component.Position.Y = position["y"].(float64)
 

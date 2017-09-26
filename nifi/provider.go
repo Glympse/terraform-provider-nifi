@@ -20,6 +20,16 @@ func Provider() terraform.ResourceProvider {
 				Optional:    true,
 				DefaultFunc: schema.EnvDefaultFunc("NIFI_API_PATH", "nifi-api"),
 			},
+			"admin_cert": &schema.Schema{
+				Type:        schema.TypeString,
+				Optional:    true,
+				DefaultFunc: schema.EnvDefaultFunc("NIFI_ADMIN_CERT", nil),
+			},
+			"admin_key": &schema.Schema{
+				Type:        schema.TypeString,
+				Optional:    true,
+				DefaultFunc: schema.EnvDefaultFunc("NIFI_ADMIN_KEY", nil),
+			},
 		},
 
 		ResourcesMap: map[string]*schema.Resource{

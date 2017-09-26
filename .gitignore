@@ -9,3 +9,7 @@ bin
 # Terraform
 *.tfstate
 *.tfstate.backup
+
+**/crash.log
+
+**/terraform-provider-nifi

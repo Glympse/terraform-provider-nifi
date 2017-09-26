@@ -4,7 +4,9 @@ import (
 	"encoding/json"
 	"log"
 	"testing"
+	"time"
 
+	"github.com/hashicorp/terraform/helper/schema"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -151,4 +153,38 @@ func TestClientGroupCreate(t *testing.T) {
 	assert.Equal(t, err, nil)
 	err = client.DeleteUser(&user2)
 	assert.Equal(t, err, nil)
+}
+
+func TestUserToSchema(t *testing.T) {
+	r := ResourceUser()
+	timeouts := &schema.ResourceTimeout{
+		Create: schema.DefaultTimeout(40 * time.Minute),
+		Update: schema.DefaultTimeout(80 * time.Minute),
+		Delete: schema.DefaultTimeout(40 * time.Minute),
+	}
+
+	r.Timeouts = timeouts
+	d := &schema.ResourceData{}
+	d.SetId("abcdefg")
+
+	//client := NewClient(config)
+	user1 := User{
+		Revision: Revision{
+			Version: 0,
+		},
+		Component: UserComponent{
+			ParentGroupId: "dummy",
+			Identity:      "test_grp_usr9",
+			Position: &Position{
+				X: 0,
+				Y: 0,
+			},
+		},
+	}
+	UserToSchema(d, &user1)
+
+	actual := d.State()
+	log.Println(actual)
+
+	log.Println(d.Get("component"))
 }
