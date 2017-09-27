@@ -198,3 +198,74 @@ func TestGroupToSchema(t *testing.T) {
 
 	log.Println(d.Get("component"))
 }
+
+func TestClientRemoteProcessGroupCreate(t *testing.T) {
+	config := Config{
+		Host:          "127.0.0.1:9443",
+		ApiPath:       "nifi-api",
+		AdminCertPath: "/opt/nifi-toolkit/target/nifi-admin.pem",
+		AdminKeyPath:  "/opt/nifi-toolkit/target/nifi-admin.key",
+	}
+	client := NewClient(config)
+
+	processGroup := RemoteProcessGroup{
+		Revision: Revision{
+			Version: 0,
+		},
+		Component: RemoteProcessGroupComponent{
+			ParentGroupId: "root",
+			Name:          "test_remote_pg",
+			Position: Position{
+				X: 0,
+				Y: 0,
+			},
+			TargetUris:        "https://localhost:9443/nifi",
+			TransportProtocol: "http",
+		},
+	}
+	client.CreateRemoteProcessGroup(&processGroup)
+	assert.NotEmpty(t, processGroup.Component.Id)
+
+	processGroup2, err := client.GetRemoteProcessGroup(processGroup.Component.Id)
+	assert.Equal(t, err, nil)
+	assert.NotEmpty(t, processGroup2.Component.Id)
+
+	processGroup.Component.Name = "test_remote_pg2"
+	err = client.UpdateRemoteProcessGroup(&processGroup)
+	assert.Equal(t, err, nil)
+}
+
+func TestClientInputPortCreate(t *testing.T) {
+	config := Config{
+		Host:          "127.0.0.1:9443",
+		ApiPath:       "nifi-api",
+		AdminCertPath: "/opt/nifi-toolkit/target/nifi-admin.pem",
+		AdminKeyPath:  "/opt/nifi-toolkit/target/nifi-admin.key",
+	}
+	client := NewClient(config)
+
+	inputPort := Port{
+		Revision: Revision{
+			Version: 0,
+		},
+		Component: PortComponent{
+			ParentGroupId: "root",
+			Name:          "test_input_port",
+			Position: Position{
+				X: 0,
+				Y: 0,
+			},
+			PortType: "INPUT_PORT",
+		},
+	}
+	client.CreatePort(&inputPort)
+	assert.NotEmpty(t, inputPort.Component.Id)
+
+	inputPort2, err := client.GetPort(inputPort.Component.Id, inputPort.Component.PortType)
+	assert.Equal(t, err, nil)
+	assert.NotEmpty(t, inputPort2.Component.Id)
+
+	inputPort.Component.Name = "test_input_port2"
+	err = client.UpdatePort(&inputPort)
+	assert.Equal(t, err, nil)
+}

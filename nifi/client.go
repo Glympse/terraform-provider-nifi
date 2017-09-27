@@ -662,9 +662,178 @@ func (c *Client) DeleteGroup(group *Group) error {
 	return err
 }
 
-// func (c *Client) AddUsersToGroup(user_ids []*string, group_id string) error {
-// 	group, err := c.GetGroup(group_id)
-// 	for _, u := range user_ids {
-// 	}
-// 	return err
-// }
+//remote process group
+type RemoteProcessGroupComponent struct {
+	Id                string   `json:"id,omitempty"`
+	ParentGroupId     string   `json:"parentGroupId"`
+	Name              string   `json:"name"`
+	Position          Position `json:"position"`
+	TargetUris        string   `json:"targetUris"`
+	TransportProtocol string   `json:"transportProtocol"`
+}
+
+type RemoteProcessGroup struct {
+	Revision  Revision                    `json:"revision"`
+	Component RemoteProcessGroupComponent `json:"component"`
+}
+
+func (c *Client) CreateRemoteProcessGroup(processGroup *RemoteProcessGroup) error {
+	url := fmt.Sprintf("%s://%s/%s/process-groups/%s/remote-process-groups",
+		c.HttpScheme, c.Config.Host, c.Config.ApiPath, processGroup.Component.ParentGroupId)
+	_, err := c.JsonCall("POST", url, processGroup, processGroup)
+	return err
+}
+
+func (c *Client) GetRemoteProcessGroup(processGroupId string) (*RemoteProcessGroup, error) {
+	url := fmt.Sprintf("%s://%s/%s/remote-process-groups/%s",
+		c.HttpScheme, c.Config.Host, c.Config.ApiPath, processGroupId)
+	processGroup := RemoteProcessGroup{}
+	code, err := c.JsonCall("GET", url, nil, &processGroup)
+	if 404 == code {
+		return nil, fmt.Errorf("not_found")
+	}
+	if nil != err {
+		return nil, err
+	}
+	return &processGroup, nil
+}
+
+func (c *Client) UpdateRemoteProcessGroup(processGroup *RemoteProcessGroup) error {
+	url := fmt.Sprintf("%s://%s/%s/remote-process-groups/%s",
+		c.HttpScheme, c.Config.Host, c.Config.ApiPath, processGroup.Component.Id)
+	_, err := c.JsonCall("PUT", url, processGroup, processGroup)
+	return err
+}
+
+func (c *Client) DeleteRemoteProcessGroup(processGroup *RemoteProcessGroup) error {
+	url := fmt.Sprintf("%s://%s/%s/process-groups/%s?version=%d",
+		c.HttpScheme, c.Config.Host, c.Config.ApiPath, processGroup.Component.Id, processGroup.Revision.Version)
+	_, err := c.JsonCall("DELETE", url, nil, nil)
+	return err
+}
+
+//input port
+type Port struct {
+	Revision  Revision      `json:"revision"`
+	Component PortComponent `json:"component"`
+}
+type PortComponent struct {
+	Id            string   `json:"id,omitempty"`
+	ParentGroupId string   `json:"parentGroupId"`
+	Name          string   `json:"name"`
+	PortType      string   `json:"type"`
+	Comments      string   `json:"comments"`
+	Position      Position `json:"position"`
+	State         string   `json:"state,omitempty"`
+}
+
+func (c *Client) CreatePort(port *Port) error {
+	parent_group_id := port.Component.ParentGroupId
+	port_type := port.Component.PortType
+	url := ""
+	switch port_type {
+	case "INPUT_PORT":
+		url = fmt.Sprintf("%s://%s/%s/process-groups/%s/input-ports",
+			c.HttpScheme, c.Config.Host, c.Config.ApiPath, parent_group_id)
+	case "OUTPUT_PORT":
+		url = fmt.Sprintf("%s://%s/%s/process-groups/%s/output-ports",
+			c.HttpScheme, c.Config.Host, c.Config.ApiPath, parent_group_id)
+	default:
+		log.Fatal(fmt.Printf("Invalid port type : %s.", port_type))
+	}
+	_, err := c.JsonCall("POST", url, port, port)
+	return err
+}
+func (c *Client) UpdatePort(port *Port) error {
+	port_type := port.Component.PortType
+	portId := port.Component.Id
+	url := ""
+	switch port_type {
+	case "INPUT_PORT":
+		url = fmt.Sprintf("%s://%s/%s/input-ports/%s",
+			c.HttpScheme, c.Config.Host, c.Config.ApiPath, portId)
+	case "OUTPUT_PORT":
+		url = fmt.Sprintf("%s://%s/%s/output-ports/%s",
+			c.HttpScheme, c.Config.Host, c.Config.ApiPath, portId)
+	default:
+		log.Fatal(fmt.Printf("Invalid port type : %s.", port_type))
+	}
+	_, err := c.JsonCall("PUT", url, port, port)
+	return err
+}
+func (c *Client) GetPort(portId string, port_type string) (*Port, error) {
+	url := ""
+	switch port_type {
+	case "INPUT_PORT":
+		url = fmt.Sprintf("%s://%s/%s/input-ports/%s",
+			c.HttpScheme, c.Config.Host, c.Config.ApiPath, portId)
+	case "OUTPUT_PORT":
+		url = fmt.Sprintf("%s://%s/%s/output-ports/%s",
+			c.HttpScheme, c.Config.Host, c.Config.ApiPath, portId)
+	default:
+		log.Fatal(fmt.Printf("Invalid port type : %s.", port_type))
+	}
+	port := Port{}
+	code, err := c.JsonCall("GET", url, nil, &port)
+	if 404 == code {
+		return nil, fmt.Errorf("not_found")
+	}
+	if nil != err {
+		return nil, err
+	}
+	return &port, nil
+}
+
+func (c *Client) DeletePort(port *Port) error {
+	port_id := port.Component.Id
+	port_type := port.Component.PortType
+	url := ""
+	switch port_type {
+	case "INPUT_PORT":
+		url = fmt.Sprintf("%s://%s/%s/input-ports/%s",
+			c.HttpScheme, c.Config.Host, c.Config.ApiPath, port_id)
+	case "OUTPUT_PORT":
+		url = fmt.Sprintf("%s://%s/%s/output-ports/%s",
+			c.HttpScheme, c.Config.Host, c.Config.ApiPath, port_id)
+	default:
+		log.Fatal(fmt.Printf("Invalid port type : %s.", port_type))
+	}
+	_, err := c.JsonCall("DELETE", url, nil, nil)
+	return err
+}
+
+func (c *Client) SetPortState(port *Port, state string) error {
+	stateUpdate := Port{
+		Revision: Revision{
+			Version: port.Revision.Version,
+		},
+		Component: PortComponent{
+			Id:    port.Component.Id,
+			State: state,
+		},
+	}
+
+	port_type := port.Component.PortType
+	url := ""
+	switch port_type {
+	case "INPUT_PORT":
+		url = fmt.Sprintf("%s://%s/%s/input-ports/%s",
+			c.HttpScheme, c.Config.Host, c.Config.ApiPath, port.Component.Id)
+	case "OUTPUT_PORT":
+		url = fmt.Sprintf("%s://%s/%s/output-ports/%s",
+			c.HttpScheme, c.Config.Host, c.Config.ApiPath, port.Component.Id)
+	default:
+		log.Fatal(fmt.Printf("Invalid port type : %s.", port_type))
+	}
+
+	_, err := c.JsonCall("PUT", url, stateUpdate, port)
+	return err
+}
+
+func (c *Client) StartPort(port *Port) error {
+	return c.SetPortState(port, "RUNNING")
+}
+
+func (c *Client) StopPort(port *Port) error {
+	return c.SetPortState(port, "STOPPED")
+}
