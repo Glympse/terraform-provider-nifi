@@ -19,10 +19,11 @@ resource "nifi_user" "test_user" {
 resource "nifi_group" "test_group" {
   component {
     identity="test_group"
-    parent_group_id = ""
+    parent_group_id = "root"
     position {
       x = 0
       y = 0
     }
+    users=[]
   }
 }
