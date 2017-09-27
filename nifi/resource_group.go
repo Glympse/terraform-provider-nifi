@@ -14,6 +14,12 @@ func ResourceGroup() *schema.Resource {
 		Update: ResourceGroupUpdate,
 		Delete: ResourceGroupDelete,
 		Exists: ResourceGroupExists,
+		Importer: &schema.ResourceImporter{
+			State: func(d *schema.ResourceData, meta interface{}) ([]*schema.ResourceData, error) {
+				//d.Set("name", d.Id())
+				return []*schema.ResourceData{d}, nil
+			},
+		},
 
 		Schema: map[string]*schema.Schema{
 			"parent_group_id": SchemaParentGroupId(),
@@ -157,13 +163,6 @@ func ResourceGroupDeleteInternal(d *schema.ResourceData, meta interface{}) error
 func ResourceGroupExists(d *schema.ResourceData, meta interface{}) (bool, error) {
 	log.Println("ResourceUserExists")
 	groupId := d.Id()
-
-	v := d.Get("component").([]interface{})
-	if len(v) != 1 {
-		fmt.Errorf("Exactly one component is required")
-	}
-	component := v[0].(map[string]interface{})
-	groupIden := component["identity"].(string)
 	client := meta.(*Client)
 	if groupId != "" {
 		_, err := client.GetGroup(groupId)
@@ -177,32 +176,39 @@ func ResourceGroupExists(d *schema.ResourceData, meta interface{}) (bool, error)
 			}
 		}
 	} else {
-		if groupIden != "" {
-			groupIds, err := client.GetGroupIdsWithIdentity(groupIden)
-			if nil != err {
-				if "not_found" == err.Error() {
-					log.Printf("[INFO] Group %s no longer exists, removing from state...", groupIden)
-					d.SetId("")
-					return false, nil
-				} else {
-					return false, fmt.Errorf("Error testing existence of Group: %s", groupIden)
-				}
-			} else {
-				if len(groupIds) == 1 {
-					d.SetId(groupIds[0])
-					return true, nil
-				} else {
-					if len(groupIds) > 1 {
+		v := d.Get("component").([]interface{})
+		if len(v) != 1 {
+			return false, fmt.Errorf("Exactly one component is required")
+		} else {
+			component := v[0].(map[string]interface{})
+			groupIden := component["identity"].(string)
+			if groupIden != "" {
+				groupIds, err := client.GetGroupIdsWithIdentity(groupIden)
+				if nil != err {
+					if "not_found" == err.Error() {
+						log.Printf("[INFO] Group %s no longer exists, removing from state...", groupIden)
 						d.SetId("")
-						return false, fmt.Errorf("Error more than one Group found with identity: %s", groupIden)
+						return false, nil
 					} else {
-						d.SetId("")
 						return false, fmt.Errorf("Error testing existence of Group: %s", groupIden)
 					}
+				} else {
+					if len(groupIds) == 1 {
+						d.SetId(groupIds[0])
+						return true, nil
+					} else {
+						if len(groupIds) > 1 {
+							d.SetId("")
+							return false, fmt.Errorf("Error more than one Group found with identity: %s", groupIden)
+						} else {
+							d.SetId("")
+							return false, fmt.Errorf("Error testing existence of Group: %s", groupIden)
+						}
+					}
 				}
+			} else {
+				return false, nil
 			}
-		} else {
-			return false, nil
 		}
 	}
 	return true, nil

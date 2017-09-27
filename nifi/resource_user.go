@@ -15,7 +15,12 @@ func ResourceUser() *schema.Resource {
 		Update: ResourceUserUpdate,
 		Delete: ResourceUserDelete,
 		Exists: ResourceUserExists,
-
+		Importer: &schema.ResourceImporter{
+			State: func(d *schema.ResourceData, meta interface{}) ([]*schema.ResourceData, error) {
+				//d.Set("name", d.Id())
+				return []*schema.ResourceData{d}, nil
+			},
+		},
 		Schema: map[string]*schema.Schema{
 			"parent_group_id": SchemaParentGroupId(),
 			"revision":        SchemaRevision(),
@@ -131,13 +136,6 @@ func ResourceUserDeleteInternal(d *schema.ResourceData, meta interface{}) error 
 func ResourceUserExists(d *schema.ResourceData, meta interface{}) (bool, error) {
 	log.Println("ResourceUserExists")
 	userId := d.Id()
-
-	v := d.Get("component").([]interface{})
-	if len(v) != 1 {
-		fmt.Errorf("Exactly one component is required")
-	}
-	component := v[0].(map[string]interface{})
-	userIden := component["identity"].(string)
 	client := meta.(*Client)
 	if userId != "" {
 		_, err := client.GetUser(userId)
@@ -151,32 +149,39 @@ func ResourceUserExists(d *schema.ResourceData, meta interface{}) (bool, error) 
 			}
 		}
 	} else {
-		if userIden != "" {
-			userIds, err := client.GetUserIdsWithIdentity(userIden)
-			if nil != err {
-				if "not_found" == err.Error() {
-					log.Printf("[INFO] User %s no longer exists, removing from state...", userIden)
-					d.SetId("")
-					return false, nil
-				} else {
-					return false, fmt.Errorf("Error testing existence of User: %s", userIden)
-				}
-			} else {
-				if len(userIds) == 1 {
-					d.SetId(userIds[0])
-					return true, nil
-				} else {
-					if len(userIds) > 1 {
+		v := d.Get("component").([]interface{})
+		if len(v) != 1 {
+			return false, fmt.Errorf("Exactly one component is required")
+		} else {
+			component := v[0].(map[string]interface{})
+			userIden := component["identity"].(string)
+			if userIden != "" {
+				userIds, err := client.GetUserIdsWithIdentity(userIden)
+				if nil != err {
+					if "not_found" == err.Error() {
+						log.Printf("[INFO] User %s no longer exists, removing from state...", userIden)
 						d.SetId("")
-						return false, fmt.Errorf("Error more than one user found with identity: %s", userIden)
+						return false, nil
 					} else {
-						d.SetId("")
 						return false, fmt.Errorf("Error testing existence of User: %s", userIden)
 					}
+				} else {
+					if len(userIds) == 1 {
+						d.SetId(userIds[0])
+						return true, nil
+					} else {
+						if len(userIds) > 1 {
+							d.SetId("")
+							return false, fmt.Errorf("Error more than one user found with identity: %s", userIden)
+						} else {
+							d.SetId("")
+							return false, fmt.Errorf("Error testing existence of User: %s", userIden)
+						}
+					}
 				}
+			} else {
+				return false, nil
 			}
-		} else {
-			return false, nil
 		}
 	}
 	return true, nil
