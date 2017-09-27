@@ -38,6 +38,12 @@ func ResourceGroup() *schema.Resource {
 							Required: true,
 						},
 						"position": SchemaPosition(),
+						"users": &schema.Schema{
+							Type:     schema.TypeSet,
+							Required: true,
+							Elem:     &schema.Schema{Type: schema.TypeString},
+							Set:      schema.HashString,
+						},
 					},
 				},
 			},
@@ -234,6 +240,13 @@ func GroupFromSchema(meta interface{}, d *schema.ResourceData, group *Group) err
 	group.Component.Position.X = position["x"].(float64)
 	group.Component.Position.Y = position["y"].(float64)
 
+	userList := component["users"].(*schema.Set).List()
+	tenants := []Tenant{}
+	for _, u := range userList {
+		t := Tenant{Id: u.(string)}
+		tenants = append(tenants, t)
+	}
+	group.Component.Users = tenants
 	return nil
 }
 
@@ -243,6 +256,11 @@ func GroupToSchema(d *schema.ResourceData, group *Group) error {
 	}}
 	d.Set("revision", revision)
 
+	ul := []string{}
+
+	for _, u := range group.Component.Users {
+		ul = append(ul, u.Id)
+	}
 	component := []map[string]interface{}{{
 		"parent_group_id": interface{}(group.Component.ParentGroupId).(string),
 		"position": []map[string]interface{}{{
@@ -250,6 +268,7 @@ func GroupToSchema(d *schema.ResourceData, group *Group) error {
 			"y": group.Component.Position.Y,
 		}},
 		"identity": group.Component.Identity,
+		"users":    interface{}(ul).([]string),
 	}}
 	d.Set("component", component)
 
