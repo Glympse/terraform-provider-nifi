@@ -31,10 +31,7 @@ func ResourceGroup() *schema.Resource {
 							Type:     schema.TypeString,
 							Required: true,
 						},
-						"users": {
-							Type: schema.TypeList,
-							Elem: schema.TypeString,
-						},
+						"position": SchemaPosition(),
 					},
 				},
 			},
@@ -43,10 +40,10 @@ func ResourceGroup() *schema.Resource {
 }
 
 func ResourceGroupCreate(d *schema.ResourceData, meta interface{}) error {
-	group := Group{}
+	group := GroupStub()
 	group.Revision.Version = 0
 
-	err := GroupFromSchema(meta, d, &group)
+	err := GroupFromSchema(meta, d, group)
 	if err != nil {
 		return fmt.Errorf("Failed to parse User schema")
 	}
@@ -54,7 +51,7 @@ func ResourceGroupCreate(d *schema.ResourceData, meta interface{}) error {
 
 	// Create user
 	client := meta.(*Client)
-	err = client.CreateGroup(&group)
+	err = client.CreateGroup(group)
 	if err != nil {
 		return fmt.Errorf("Failed to create Connection")
 	}
@@ -63,7 +60,7 @@ func ResourceGroupCreate(d *schema.ResourceData, meta interface{}) error {
 	d.SetId(group.Component.Id)
 	d.Set("parent_group_id", parentGroupId)
 
-	return ResourceUserRead(d, meta)
+	return ResourceGroupRead(d, meta)
 }
 
 func ResourceGroupRead(d *schema.ResourceData, meta interface{}) error {
@@ -158,26 +155,63 @@ func ResourceGroupDeleteInternal(d *schema.ResourceData, meta interface{}) error
 }
 
 func ResourceGroupExists(d *schema.ResourceData, meta interface{}) (bool, error) {
+	log.Println("ResourceUserExists")
 	groupId := d.Id()
 
+	v := d.Get("component").([]interface{})
+	if len(v) != 1 {
+		fmt.Errorf("Exactly one component is required")
+	}
+	component := v[0].(map[string]interface{})
+	groupIden := component["identity"].(string)
 	client := meta.(*Client)
-	_, err := client.GetGroup(groupId)
-	if nil != err {
-		if "not_found" == err.Error() {
-			log.Printf("[INFO] Group %s no longer exists, removing from state...", groupId)
-			d.SetId("")
-			return false, nil
+	if groupId != "" {
+		_, err := client.GetGroup(groupId)
+		if nil != err {
+			if "not_found" == err.Error() {
+				log.Printf("[INFO] Group %s no longer exists, removing from state...", groupId)
+				d.SetId("")
+				return false, nil
+			} else {
+				return false, fmt.Errorf("Error testing existence of Group: %s", groupId)
+			}
+		}
+	} else {
+		if groupIden != "" {
+			groupIds, err := client.GetGroupIdsWithIdentity(groupIden)
+			if nil != err {
+				if "not_found" == err.Error() {
+					log.Printf("[INFO] Group %s no longer exists, removing from state...", groupIden)
+					d.SetId("")
+					return false, nil
+				} else {
+					return false, fmt.Errorf("Error testing existence of Group: %s", groupIden)
+				}
+			} else {
+				if len(groupIds) == 1 {
+					d.SetId(groupIds[0])
+					return true, nil
+				} else {
+					if len(groupIds) > 1 {
+						d.SetId("")
+						return false, fmt.Errorf("Error more than one Group found with identity: %s", groupIden)
+					} else {
+						d.SetId("")
+						return false, fmt.Errorf("Error testing existence of Group: %s", groupIden)
+					}
+				}
+			}
 		} else {
-			return false, fmt.Errorf("Error testing existence of Group: %s", groupId)
+			return false, nil
 		}
 	}
-
 	return true, nil
 }
 
 // Schema Helpers
 
 func GroupFromSchema(meta interface{}, d *schema.ResourceData, group *Group) error {
+	log.Println("[DEBUG]: GroupFromScheuma")
 	v := d.Get("component").([]interface{})
 	if len(v) != 1 {
 		return fmt.Errorf("Exactly one component is required")
@@ -194,23 +228,6 @@ func GroupFromSchema(meta interface{}, d *schema.ResourceData, group *Group) err
 	group.Component.Position.X = position["x"].(float64)
 	group.Component.Position.Y = position["y"].(float64)
 
-	v = component["users"].([]interface{})
-	client := meta.(*Client)
-	users := []*Tenant{}
-	for i := 0; i < len(v); i++ {
-		user_id := v[i].(string)
-		user, err := client.GetUser(user_id)
-		if err != nil {
-			if "not_found" == err.Error() {
-				return nil
-			} else {
-				return fmt.Errorf("Error retrieving User: %s", user_id)
-			}
-		} else {
-			users = append(users, user.ToTenant())
-		}
-	}
-	group.Component.Users = users
 	return nil
 }
 
@@ -220,20 +237,13 @@ func GroupToSchema(d *schema.ResourceData, group *Group) error {
 	}}
 	d.Set("revision", revision)
 
-	v := group.Component.Users
-	user_ids := []string{}
-	for i := 0; i < len(v); i++ {
-		tenant := v[i]
-		user_ids = append(user_ids, tenant.Id)
-	}
 	component := []map[string]interface{}{{
-		"parent_group_id": d.Get("parent_group_id").(string),
+		"parent_group_id": interface{}(group.Component.ParentGroupId).(string),
 		"position": []map[string]interface{}{{
 			"x": group.Component.Position.X,
 			"y": group.Component.Position.Y,
 		}},
 		"identity": group.Component.Identity,
-		"users":    user_ids,
 	}}
 	d.Set("component", component)
 

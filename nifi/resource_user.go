@@ -132,18 +132,53 @@ func ResourceUserExists(d *schema.ResourceData, meta interface{}) (bool, error) 
 	log.Println("ResourceUserExists")
 	userId := d.Id()
 
+	v := d.Get("component").([]interface{})
+	if len(v) != 1 {
+		fmt.Errorf("Exactly one component is required")
+	}
+	component := v[0].(map[string]interface{})
+	userIden := component["identity"].(string)
 	client := meta.(*Client)
-	_, err := client.GetUser(userId)
-	if nil != err {
-		if "not_found" == err.Error() {
-			log.Printf("[INFO] User %s no longer exists, removing from state...", userId)
-			d.SetId("")
-			return false, nil
+	if userId != "" {
+		_, err := client.GetUser(userId)
+		if nil != err {
+			if "not_found" == err.Error() {
+				log.Printf("[INFO] User %s no longer exists, removing from state...", userId)
+				d.SetId("")
+				return false, nil
+			} else {
+				return false, fmt.Errorf("Error testing existence of User: %s", userId)
+			}
+		}
+	} else {
+		if userIden != "" {
+			userIds, err := client.GetUserIdsWithIdentity(userIden)
+			if nil != err {
+				if "not_found" == err.Error() {
+					log.Printf("[INFO] User %s no longer exists, removing from state...", userIden)
+					d.SetId("")
+					return false, nil
+				} else {
+					return false, fmt.Errorf("Error testing existence of User: %s", userIden)
+				}
+			} else {
+				if len(userIds) == 1 {
+					d.SetId(userIds[0])
+					return true, nil
+				} else {
+					if len(userIds) > 1 {
+						d.SetId("")
+						return false, fmt.Errorf("Error more than one user found with identity: %s", userIden)
+					} else {
+						d.SetId("")
+						return false, fmt.Errorf("Error testing existence of User: %s", userIden)
+					}
+				}
+			}
 		} else {
-			return false, fmt.Errorf("Error testing existence of User: %s", userId)
+			return false, nil
 		}
 	}
-
 	return true, nil
 }
 

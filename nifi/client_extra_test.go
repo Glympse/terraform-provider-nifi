@@ -2,6 +2,7 @@ package nifi
 
 import (
 	"encoding/json"
+	"fmt"
 	"log"
 	"testing"
 	"time"
@@ -49,6 +50,19 @@ func TestClientUserCreate(t *testing.T) {
 	assert.Equal(t, err, nil)
 }
 
+func TestClientUserSearch(t *testing.T) {
+	config := Config{
+		Host:          "127.0.0.1:9443",
+		ApiPath:       "nifi-api",
+		AdminCertPath: "/opt/nifi-toolkit/target/nifi-admin.pem",
+		AdminKeyPath:  "/opt/nifi-toolkit/target/nifi-admin.key",
+	}
+	client := NewClient(config)
+
+	userIds, err := client.GetUserIdsWithIdentity("test_user")
+	log.Println(fmt.Sprintf("%s,%v", userIds, err))
+}
+
 func TestClientGroupCreate(t *testing.T) {
 	config := Config{
 		Host:          "127.0.0.1:9443",
@@ -77,28 +91,6 @@ func TestClientGroupCreate(t *testing.T) {
 		log.Println(user1.Component.Id)
 	}
 	assert.NotEmpty(t, user1.Component.Id)
-
-	user2 := User{
-		Revision: Revision{
-			Version: 0,
-		},
-		Component: UserComponent{
-			ParentGroupId: "",
-			Identity:      "test_grp_usr10",
-			Position: &Position{
-				X: 0,
-				Y: 0,
-			},
-		},
-	}
-	err = client.CreateUser(&user2)
-	if err != nil {
-		log.Fatal(err)
-	} else {
-		log.Println(user2.Component.Id)
-	}
-	assert.NotEmpty(t, user2.Component.Id)
-
 	users := []*Tenant{}
 	users = append(users, user1.ToTenant())
 
@@ -113,7 +105,6 @@ func TestClientGroupCreate(t *testing.T) {
 				X: 0,
 				Y: 0,
 			},
-			Users: users,
 		},
 	}
 	b, _ := json.Marshal(group)
@@ -132,27 +123,11 @@ func TestClientGroupCreate(t *testing.T) {
 	log.Println(group2.Component.Id)
 	assert.NotEmpty(t, group2.Component.Id)
 
-	users = append(users, user2.ToTenant())
-
-	group2.Component.Users = users
-	b, _ = json.Marshal(group2)
-	// Convert bytes to string.
-	s = string(b)
-	log.Println(s)
-	err = client.UpdateGroup(group2)
-
-	if err != nil {
-		log.Fatal(err)
-	} else {
-		log.Println("Update group success")
-	}
-
 	err = client.DeleteGroup(group2)
 	assert.Equal(t, err, nil)
 	err = client.DeleteUser(&user1)
 	assert.Equal(t, err, nil)
-	err = client.DeleteUser(&user2)
-	assert.Equal(t, err, nil)
+
 }
 
 func TestUserToSchema(t *testing.T) {
@@ -182,6 +157,40 @@ func TestUserToSchema(t *testing.T) {
 		},
 	}
 	UserToSchema(d, &user1)
+
+	actual := d.State()
+	log.Println(actual)
+
+	log.Println(d.Get("component"))
+}
+
+func TestGroupToSchema(t *testing.T) {
+	r := ResourceGroup()
+	timeouts := &schema.ResourceTimeout{
+		Create: schema.DefaultTimeout(40 * time.Minute),
+		Update: schema.DefaultTimeout(80 * time.Minute),
+		Delete: schema.DefaultTimeout(40 * time.Minute),
+	}
+
+	r.Timeouts = timeouts
+	d := &schema.ResourceData{}
+	d.SetId("abcdefg")
+
+	//client := NewClient(config)
+	group1 := Group{
+		Revision: Revision{
+			Version: 0,
+		},
+		Component: GroupComponent{
+			ParentGroupId: "dummy",
+			Identity:      "test_grp",
+			Position: &Position{
+				X: 0,
+				Y: 0,
+			},
+		},
+	}
+	GroupToSchema(d, &group1)
 
 	actual := d.State()
 	log.Println(actual)

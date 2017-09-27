@@ -487,6 +487,12 @@ func (c *Client) DisableControllerService(controllerService *ControllerService) 
 type Tenant struct {
 	Id string `json:"id"`
 }
+
+type TenantSearchResult struct {
+	Users      []Tenant `json:"users"`
+	UserGroups []Tenant `json:"userGroups"`
+}
+
 type UserComponent struct {
 	Id            string    `json:"id,omitempty"`
 	ParentGroupId string    `json:"parentGroupId,omitempty"`
@@ -538,6 +544,29 @@ func (c *Client) GetUser(userId string) (*User, error) {
 	}
 	return user, nil
 }
+func (c *Client) GetUserIdsWithIdentity(userIden string) ([]string, error) {
+	//https://localhost:9443/nifi-api/tenants/search-results?q=test_user
+
+	searchResult := TenantSearchResult{}
+
+	url := fmt.Sprintf("%s://%s/%s/tenants/search-results?q=%s",
+		c.HttpScheme, c.Config.Host, c.Config.ApiPath, userIden)
+
+	code, err := c.JsonCall("GET", url, nil, &searchResult)
+
+	userIds := []string{}
+	if 404 == code {
+		return userIds, fmt.Errorf("not_found")
+	}
+	if nil != err {
+		return userIds, err
+	}
+	for i := 0; i < len(searchResult.Users); i++ {
+		foundId := searchResult.Users[i].Id
+		userIds = append(userIds, foundId)
+	}
+	return userIds, nil
+}
 
 func (c *Client) DeleteUser(user *User) error {
 	url := fmt.Sprintf("%s://%s/%s/tenants/users/%s?version=%d",
@@ -552,11 +581,10 @@ type GroupComponent struct {
 	ParentGroupId string    `json:"parentGroupId,omitempty"`
 	Identity      string    `json:"identity,omitempty"`
 	Position      *Position `json:"position,omitempty"`
-	Users         []*Tenant `json:"users"`
 }
 
 func (c GroupComponent) String() string {
-	return fmt.Sprintf("Id: %v ParentGroupID: %v, Identity: %v, Users:[%v]", c.Id, c.ParentGroupId, c.Identity, c.Users)
+	return fmt.Sprintf("Id: %v ParentGroupID: %v, Identity: %v", c.Id, c.ParentGroupId, c.Identity)
 }
 
 type Group struct {
@@ -572,7 +600,6 @@ func GroupStub() *Group {
 	return &Group{
 		Component: GroupComponent{
 			Position: &Position{},
-			Users:    []*Tenant{},
 		},
 	}
 }
@@ -594,6 +621,29 @@ func (c *Client) GetGroup(groupId string) (*Group, error) {
 		return nil, err
 	}
 	return group, nil
+}
+func (c *Client) GetGroupIdsWithIdentity(groupIden string) ([]string, error) {
+	//https://localhost:9443/nifi-api/tenants/search-results?q=test_user
+
+	searchResult := TenantSearchResult{}
+
+	url := fmt.Sprintf("%s://%s/%s/tenants/search-results?q=%s",
+		c.HttpScheme, c.Config.Host, c.Config.ApiPath, groupIden)
+
+	code, err := c.JsonCall("GET", url, nil, &searchResult)
+
+	groupIds := []string{}
+	if 404 == code {
+		return groupIds, fmt.Errorf("not_found")
+	}
+	if nil != err {
+		return groupIds, err
+	}
+	for i := 0; i < len(searchResult.UserGroups); i++ {
+		foundId := searchResult.UserGroups[i].Id
+		groupIds = append(groupIds, foundId)
+	}
+	return groupIds, nil
 }
 func (c *Client) UpdateGroup(group *Group) error {
 	url := fmt.Sprintf("%s://%s/%s/tenants/user-groups/%s",
