@@ -91,8 +91,8 @@ func TestClientGroupCreate(t *testing.T) {
 		log.Println(user1.Component.Id)
 	}
 	assert.NotEmpty(t, user1.Component.Id)
-	users := []*Tenant{}
-	users = append(users, user1.ToTenant())
+	users := []Tenant{}
+	users = append(users, *user1.ToTenant())
 
 	group := Group{
 		Revision: Revision{
@@ -105,6 +105,7 @@ func TestClientGroupCreate(t *testing.T) {
 				X: 0,
 				Y: 0,
 			},
+			Users: users,
 		},
 	}
 	b, _ := json.Marshal(group)

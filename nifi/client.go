@@ -581,6 +581,7 @@ type GroupComponent struct {
 	ParentGroupId string    `json:"parentGroupId,omitempty"`
 	Identity      string    `json:"identity,omitempty"`
 	Position      *Position `json:"position,omitempty"`
+	Users         []Tenant  `json:"users,omitempty"`
 }
 
 func (c GroupComponent) String() string {
@@ -660,3 +661,10 @@ func (c *Client) DeleteGroup(group *Group) error {
 	_, err := c.JsonCall("DELETE", url, nil, nil)
 	return err
 }
+
+// func (c *Client) AddUsersToGroup(user_ids []*string, group_id string) error {
+// 	group, err := c.GetGroup(group_id)
+// 	for _, u := range user_ids {
+// 	}
+// 	return err
+// }
