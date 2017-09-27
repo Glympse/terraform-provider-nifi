@@ -1,8 +1,9 @@
 package nifi
 
 import (
-	"github.com/stretchr/testify/assert"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func TestClientProcessGroupCreate(t *testing.T) {
@@ -149,7 +150,7 @@ func TestClientConnectionCreate(t *testing.T) {
 				SchedulingStrategy:               "TIMER_DRIVEN",
 				SchedulingPeriod:                 "0 sec",
 				ConcurrentlySchedulableTaskCount: 1,
-				Properties: map[string]interface{}{},
+				Properties:                       map[string]interface{}{},
 				AutoTerminatedRelationships: []string{
 					"success",
 				},
@@ -167,16 +168,16 @@ func TestClientConnectionCreate(t *testing.T) {
 		Component: ConnectionComponent{
 			ParentGroupId: "root",
 			Source: ConnectionHand{
-				Id: processor1.Component.Id,
-				Type: "PROCESSOR",
+				Id:      processor1.Component.Id,
+				Type:    "PROCESSOR",
 				GroupId: "root",
 			},
 			Destination: ConnectionHand{
-				Id: processor2.Component.Id,
-				Type: "PROCESSOR",
+				Id:      processor2.Component.Id,
+				Type:    "PROCESSOR",
 				GroupId: "root",
 			},
-			SelectedRelationships:[]string{
+			SelectedRelationships: []string{
 				"success",
 			},
 		},

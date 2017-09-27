@@ -20,6 +20,16 @@ func Provider() terraform.ResourceProvider {
 				Optional:    true,
 				DefaultFunc: schema.EnvDefaultFunc("NIFI_API_PATH", "nifi-api"),
 			},
+			"admin_cert": &schema.Schema{
+				Type:        schema.TypeString,
+				Optional:    true,
+				DefaultFunc: schema.EnvDefaultFunc("NIFI_ADMIN_CERT", nil),
+			},
+			"admin_key": &schema.Schema{
+				Type:        schema.TypeString,
+				Optional:    true,
+				DefaultFunc: schema.EnvDefaultFunc("NIFI_ADMIN_KEY", nil),
+			},
 		},
 
 		ResourcesMap: map[string]*schema.Resource{
@@ -27,6 +37,8 @@ func Provider() terraform.ResourceProvider {
 			"nifi_processor":          ResourceProcessor(),
 			"nifi_connection":         ResourceConnection(),
 			"nifi_controller_service": ResourceControllerService(),
+			"nifi_user":               ResourceUser(),
+			"nifi_group":              ResourceGroup(),
 		},
 
 		ConfigureFunc: providerConfigure,
@@ -35,8 +47,10 @@ func Provider() terraform.ResourceProvider {
 
 func providerConfigure(d *schema.ResourceData) (interface{}, error) {
 	config := Config{
-		Host:    d.Get("host").(string),
-		ApiPath: d.Get("api_path").(string),
+		Host:          d.Get("host").(string),
+		ApiPath:       d.Get("api_path").(string),
+		AdminCertPath: d.Get("admin_cert").(string),
+		AdminKeyPath:  d.Get("admin_key").(string),
 	}
 	client := NewClient(config)
 	return client, nil

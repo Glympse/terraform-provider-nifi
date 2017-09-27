@@ -2,6 +2,7 @@ package nifi
 
 import (
 	"bytes"
+	"crypto/tls"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -20,14 +21,34 @@ type Client struct {
 	// This breaks Terraform model to some extent but at the same time is unavoidable in NiFi world.
 	// Currently only flows that involve cross-resource interactions are wrapped into lock/unlock sections.
 	// Most of operations can still be performed in parallel.
-	Lock sync.Mutex
+	HttpScheme string
+	Lock       sync.Mutex
 }
 
 func NewClient(config Config) *Client {
-	return &Client{
-		Config: config,
-		Client: &http.Client{},
+	http_client := &http.Client{}
+	scheme := "http"
+	if config.AdminCertPath != "" && config.AdminKeyPath != "" {
+		cert, err := tls.LoadX509KeyPair(config.AdminCertPath, config.AdminKeyPath)
+		if err != nil {
+			log.Fatal(err)
+		} else {
+			tlsConfig := &tls.Config{
+				Certificates: []tls.Certificate{cert},
+			}
+			tlsConfig.BuildNameToCertificate()
+			tlsConfig.InsecureSkipVerify = true
+			transport := &http.Transport{TLSClientConfig: tlsConfig}
+			http_client = &http.Client{Transport: transport}
+			scheme = "https"
+		}
 	}
+	client := &Client{
+		Config:     config,
+		Client:     http_client,
+		HttpScheme: scheme,
+	}
+	return client
 }
 
 // Common section
@@ -267,9 +288,9 @@ func (c *Client) StopProcessor(processor *Processor) error {
 // Connection section
 
 type ConnectionHand struct {
-	Type 	string `json:"type"`
-	Id   	string `json:"id"`
-	GroupId	string `json:"groupId"`
+	Type    string `json:"type"`
+	Id      string `json:"id"`
+	GroupId string `json:"groupId"`
 }
 
 type ConnectionComponent struct {
@@ -461,3 +482,189 @@ func (c *Client) EnableControllerService(controllerService *ControllerService) e
 func (c *Client) DisableControllerService(controllerService *ControllerService) error {
 	return c.SetControllerServiceState(controllerService, "DISABLED")
 }
+
+//User Tennants
+type Tenant struct {
+	Id string `json:"id"`
+}
+
+type TenantSearchResult struct {
+	Users      []Tenant `json:"users"`
+	UserGroups []Tenant `json:"userGroups"`
+}
+
+type UserComponent struct {
+	Id            string    `json:"id,omitempty"`
+	ParentGroupId string    `json:"parentGroupId,omitempty"`
+	Identity      string    `json:"identity,omitempty"`
+	Position      *Position `json:"position,omitempty"`
+}
+
+func (uc UserComponent) String() string {
+	return fmt.Sprintf("Id:%v ParentGroupID:%v, Identity:%v", uc.Id, uc.ParentGroupId, uc.Identity)
+}
+
+func (u User) ToTenant() *Tenant {
+	return &Tenant{
+		Id: u.Component.Id,
+	}
+}
+
+type User struct {
+	Revision  Revision      `json:"revision"`
+	Component UserComponent `json:"component"`
+}
+
+func (u User) String() string {
+	return fmt.Sprintf("User: {Component :{%v}}", u.Component)
+}
+func UserStub() *User {
+	return &User{
+		Component: UserComponent{
+			Position: &Position{},
+		},
+	}
+}
+func (c *Client) CreateUser(user *User) error {
+	url := fmt.Sprintf("%s://%s/%s/tenants/users",
+		c.HttpScheme, c.Config.Host, c.Config.ApiPath)
+	_, err := c.JsonCall("POST", url, user, user)
+	return err
+}
+func (c *Client) GetUser(userId string) (*User, error) {
+	url := fmt.Sprintf("%s://%s/%s/tenants/users/%s",
+		c.HttpScheme, c.Config.Host, c.Config.ApiPath, userId)
+	user := UserStub()
+	code, err := c.JsonCall("GET", url, nil, &user)
+	if 404 == code {
+		return nil, fmt.Errorf("not_found")
+	}
+	if nil != err {
+		return nil, err
+	}
+	return user, nil
+}
+func (c *Client) GetUserIdsWithIdentity(userIden string) ([]string, error) {
+	//https://localhost:9443/nifi-api/tenants/search-results?q=test_user
+
+	searchResult := TenantSearchResult{}
+
+	url := fmt.Sprintf("%s://%s/%s/tenants/search-results?q=%s",
+		c.HttpScheme, c.Config.Host, c.Config.ApiPath, userIden)
+
+	code, err := c.JsonCall("GET", url, nil, &searchResult)
+
+	userIds := []string{}
+	if 404 == code {
+		return userIds, fmt.Errorf("not_found")
+	}
+	if nil != err {
+		return userIds, err
+	}
+	for i := 0; i < len(searchResult.Users); i++ {
+		foundId := searchResult.Users[i].Id
+		userIds = append(userIds, foundId)
+	}
+	return userIds, nil
+}
+
+func (c *Client) DeleteUser(user *User) error {
+	url := fmt.Sprintf("%s://%s/%s/tenants/users/%s?version=%d",
+		c.HttpScheme, c.Config.Host, c.Config.ApiPath, user.Component.Id, user.Revision.Version)
+	_, err := c.JsonCall("DELETE", url, nil, nil)
+	return err
+}
+
+//Group Tennants
+type GroupComponent struct {
+	Id            string    `json:"id,omitempty"`
+	ParentGroupId string    `json:"parentGroupId,omitempty"`
+	Identity      string    `json:"identity,omitempty"`
+	Position      *Position `json:"position,omitempty"`
+	Users         []Tenant  `json:"users,omitempty"`
+}
+
+func (c GroupComponent) String() string {
+	return fmt.Sprintf("Id: %v ParentGroupID: %v, Identity: %v", c.Id, c.ParentGroupId, c.Identity)
+}
+
+type Group struct {
+	Revision  Revision       `json:"revision"`
+	Component GroupComponent `json:"component"`
+}
+
+func (c Group) String() string {
+	return fmt.Sprintf("Group: { Component:{ %v } }", c.Component)
+}
+
+func GroupStub() *Group {
+	return &Group{
+		Component: GroupComponent{
+			Position: &Position{},
+		},
+	}
+}
+func (c *Client) CreateGroup(group *Group) error {
+	url := fmt.Sprintf("%s://%s/%s/tenants/user-groups",
+		c.HttpScheme, c.Config.Host, c.Config.ApiPath)
+	_, err := c.JsonCall("POST", url, group, group)
+	return err
+}
+func (c *Client) GetGroup(groupId string) (*Group, error) {
+	url := fmt.Sprintf("%s://%s/%s/tenants/user-groups/%s",
+		c.HttpScheme, c.Config.Host, c.Config.ApiPath, groupId)
+	group := GroupStub()
+	code, err := c.JsonCall("GET", url, nil, &group)
+	if 404 == code {
+		return nil, fmt.Errorf("not_found")
+	}
+	if nil != err {
+		return nil, err
+	}
+	return group, nil
+}
+func (c *Client) GetGroupIdsWithIdentity(groupIden string) ([]string, error) {
+	//https://localhost:9443/nifi-api/tenants/search-results?q=test_user
+
+	searchResult := TenantSearchResult{}
+
+	url := fmt.Sprintf("%s://%s/%s/tenants/search-results?q=%s",
+		c.HttpScheme, c.Config.Host, c.Config.ApiPath, groupIden)
+
+	code, err := c.JsonCall("GET", url, nil, &searchResult)
+
+	groupIds := []string{}
+	if 404 == code {
+		return groupIds, fmt.Errorf("not_found")
+	}
+	if nil != err {
+		return groupIds, err
+	}
+	for i := 0; i < len(searchResult.UserGroups); i++ {
+		foundId := searchResult.UserGroups[i].Id
+		groupIds = append(groupIds, foundId)
+	}
+	return groupIds, nil
+}
+func (c *Client) UpdateGroup(group *Group) error {
+	url := fmt.Sprintf("%s://%s/%s/tenants/user-groups/%s",
+		c.HttpScheme, c.Config.Host, c.Config.ApiPath, group.Component.Id)
+	_, err := c.JsonCall("PUT", url, group, group)
+	if nil != err {
+		return err
+	}
+	return nil
+}
+func (c *Client) DeleteGroup(group *Group) error {
+	url := fmt.Sprintf("%s://%s/%s/tenants/user-groups/%s?version=%d",
+		c.HttpScheme, c.Config.Host, c.Config.ApiPath, group.Component.Id, group.Revision.Version)
+	_, err := c.JsonCall("DELETE", url, nil, nil)
+	return err
+}
+
+// func (c *Client) AddUsersToGroup(user_ids []*string, group_id string) error {
+// 	group, err := c.GetGroup(group_id)
+// 	for _, u := range user_ids {
+// 	}
+// 	return err
+// }
