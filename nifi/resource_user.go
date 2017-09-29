@@ -87,6 +87,7 @@ func ResourceUserRead(d *schema.ResourceData, meta interface{}) error {
 
 func ResourceUserUpdate(d *schema.ResourceData, meta interface{}) error {
 	log.Printf("[INFO] Updating User: %s..., not implemented", d.Id())
+	return nil
 }
 
 func ResourceUserDelete(d *schema.ResourceData, meta interface{}) error {
