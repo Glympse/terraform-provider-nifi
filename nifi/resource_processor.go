@@ -2,8 +2,9 @@ package nifi
 
 import (
 	"fmt"
-	"github.com/hashicorp/terraform/helper/schema"
 	"log"
+
+	"github.com/hashicorp/terraform/helper/schema"
 )
 
 func ResourceProcessor() *schema.Resource {
@@ -284,7 +285,8 @@ func ProcessorRemoveOverlappingConnections(client *Client, processor *Processor)
 	// Remove overlaps
 	for _, connection := range overlappingConnections {
 		// Stop destination processor
-		err = ConnectionStopProcessor(client, connection.Component.Destination.Id)
+		//err = ConnectionStopProcessor(client, connection.Component.Destination.Id)
+		err = client.StopConnectionHand(&connection.Component.Destination)
 		if nil != err {
 			log.Printf("[INFO] Failed to stop Processor: %s", connection.Component.Destination.Id)
 			continue
@@ -319,7 +321,8 @@ func ProcessorRemoveOverlappingConnections(client *Client, processor *Processor)
 		}
 
 		// Start destination processor
-		err = ConnectionStartProcessor(client, connection.Component.Destination.Id)
+		//err = ConnectionStartProcessor(client, connection.Component.Destination.Id)
+		err = client.StartConnectionHand(&connection.Component.Destination)
 		if nil != err {
 			log.Printf("[INFO] Failed to start Processor: %s", connection.Component.Destination.Id)
 		}

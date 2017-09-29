@@ -76,6 +76,7 @@ func (c *Client) JsonCall(method string, url string, bodyIn interface{}, bodyOut
 
 	if bodyIn != nil {
 		request.Header.Add("Content-Type", "application/json; charset=utf-8")
+		request.Header.Add("Accept", "application/json")
 	}
 
 	response, err := c.Client.Do(request)
@@ -83,6 +84,7 @@ func (c *Client) JsonCall(method string, url string, bodyIn interface{}, bodyOut
 		return 0, err
 	}
 	if response.StatusCode >= 300 {
+		log.Printf("[DEBUG]: http call error code: %d", response.StatusCode)
 		return response.StatusCode, fmt.Errorf("The call has failed with the code of %d", response.StatusCode)
 	}
 	defer response.Body.Close()
@@ -319,15 +321,15 @@ type ConnectionDropRequest struct {
 }
 
 func (c *Client) CreateConnection(connection *Connection) error {
-	url := fmt.Sprintf("http://%s/%s/process-groups/%s/connections",
-		c.Config.Host, c.Config.ApiPath, connection.Component.ParentGroupId)
+	url := fmt.Sprintf("%s://%s/%s/process-groups/%s/connections",
+		c.HttpScheme, c.Config.Host, c.Config.ApiPath, connection.Component.ParentGroupId)
 	_, err := c.JsonCall("POST", url, connection, connection)
 	return err
 }
 
 func (c *Client) GetConnection(connectionId string) (*Connection, error) {
-	url := fmt.Sprintf("http://%s/%s/connections/%s",
-		c.Config.Host, c.Config.ApiPath, connectionId)
+	url := fmt.Sprintf("%s://%s/%s/connections/%s",
+		c.HttpScheme, c.Config.Host, c.Config.ApiPath, connectionId)
 	connection := Connection{}
 	code, err := c.JsonCall("GET", url, nil, &connection)
 	if 404 == code {
@@ -340,23 +342,23 @@ func (c *Client) GetConnection(connectionId string) (*Connection, error) {
 }
 
 func (c *Client) UpdateConnection(connection *Connection) error {
-	url := fmt.Sprintf("http://%s/%s/connections/%s",
-		c.Config.Host, c.Config.ApiPath, connection.Component.Id)
+	url := fmt.Sprintf("%s://%s/%s/connections/%s",
+		c.HttpScheme, c.Config.Host, c.Config.ApiPath, connection.Component.Id)
 	_, err := c.JsonCall("PUT", url, connection, connection)
 	return err
 }
 
 func (c *Client) DeleteConnection(connection *Connection) error {
-	url := fmt.Sprintf("http://%s/%s/connections/%s?version=%d",
-		c.Config.Host, c.Config.ApiPath, connection.Component.Id, connection.Revision.Version)
+	url := fmt.Sprintf("%s://%s/%s/connections/%s?version=%d",
+		c.HttpScheme, c.Config.Host, c.Config.ApiPath, connection.Component.Id, connection.Revision.Version)
 	_, err := c.JsonCall("DELETE", url, nil, nil)
 	return err
 }
 
 func (c *Client) DropConnectionData(connection *Connection) error {
 	// Create a request to drop the contents of the queue in this connection
-	url := fmt.Sprintf("http://%s/%s/flowfile-queues/%s/drop-requests",
-		c.Config.Host, c.Config.ApiPath, connection.Component.Id)
+	url := fmt.Sprintf("%s://%s/%s/flowfile-queues/%s/drop-requests",
+		c.HttpScheme, c.Config.Host, c.Config.ApiPath, connection.Component.Id)
 	dropRequest := ConnectionDropRequest{}
 	_, err := c.JsonCall("POST", url, nil, &dropRequest)
 	if nil != err {
@@ -367,8 +369,8 @@ func (c *Client) DropConnectionData(connection *Connection) error {
 	maxAttempts := 10
 	for iteration := 0; iteration < maxAttempts; iteration++ {
 		// Check status of the request
-		url = fmt.Sprintf("http://%s/%s/flowfile-queues/%s/drop-requests/%s",
-			c.Config.Host, c.Config.ApiPath, connection.Component.Id, dropRequest.DropRequest.Id)
+		url = fmt.Sprintf("%s://%s/%s/flowfile-queues/%s/drop-requests/%s",
+			c.HttpScheme, c.Config.Host, c.Config.ApiPath, connection.Component.Id, dropRequest.DropRequest.Id)
 		_, err = c.JsonCall("GET", url, nil, &dropRequest)
 		if nil != err {
 			continue
@@ -389,8 +391,8 @@ func (c *Client) DropConnectionData(connection *Connection) error {
 	}
 
 	// Remove a request to drop the contents of this connection
-	url = fmt.Sprintf("http://%s/%s/flowfile-queues/%s/drop-requests/%s",
-		c.Config.Host, c.Config.ApiPath, connection.Component.Id, dropRequest.DropRequest.Id)
+	url = fmt.Sprintf("%s://%s/%s/flowfile-queues/%s/drop-requests/%s",
+		c.HttpScheme, c.Config.Host, c.Config.ApiPath, connection.Component.Id, dropRequest.DropRequest.Id)
 	_, err = c.JsonCall("DELETE", url, nil, nil)
 	if nil != err {
 		return err
@@ -416,8 +418,8 @@ type ControllerService struct {
 }
 
 func (c *Client) CreateControllerService(controllerService *ControllerService) error {
-	url := fmt.Sprintf("http://%s/%s/process-groups/%s/controller-services",
-		c.Config.Host, c.Config.ApiPath, controllerService.Component.ParentGroupId)
+	url := fmt.Sprintf("%s://%s/%s/process-groups/%s/controller-services",
+		c.HttpScheme, c.Config.Host, c.Config.ApiPath, controllerService.Component.ParentGroupId)
 	_, err := c.JsonCall("POST", url, controllerService, controllerService)
 	if nil != err {
 		return err
@@ -427,8 +429,8 @@ func (c *Client) CreateControllerService(controllerService *ControllerService) e
 }
 
 func (c *Client) GetControllerService(controllerServiceId string) (*ControllerService, error) {
-	url := fmt.Sprintf("http://%s/%s/controller-services/%s",
-		c.Config.Host, c.Config.ApiPath, controllerServiceId)
+	url := fmt.Sprintf("%s://%s/%s/controller-services/%s",
+		c.HttpScheme, c.Config.Host, c.Config.ApiPath, controllerServiceId)
 	controllerService := ControllerService{}
 	code, err := c.JsonCall("GET", url, nil, &controllerService)
 	if 404 == code {
@@ -442,8 +444,8 @@ func (c *Client) GetControllerService(controllerServiceId string) (*ControllerSe
 }
 
 func (c *Client) UpdateControllerService(controllerService *ControllerService) error {
-	url := fmt.Sprintf("http://%s/%s/controller-services/%s",
-		c.Config.Host, c.Config.ApiPath, controllerService.Component.Id)
+	url := fmt.Sprintf("%s://%s/%s/controller-services/%s",
+		c.HttpScheme, c.Config.Host, c.Config.ApiPath, controllerService.Component.Id)
 	_, err := c.JsonCall("PUT", url, controllerService, controllerService)
 	if nil != err {
 		return err
@@ -453,8 +455,8 @@ func (c *Client) UpdateControllerService(controllerService *ControllerService) e
 }
 
 func (c *Client) DeleteControllerService(controllerService *ControllerService) error {
-	url := fmt.Sprintf("http://%s/%s/controller-services/%s?version=%d",
-		c.Config.Host, c.Config.ApiPath, controllerService.Component.Id, controllerService.Revision.Version)
+	url := fmt.Sprintf("%s://%s/%s/controller-services/%s?version=%d",
+		c.HttpScheme, c.Config.Host, c.Config.ApiPath, controllerService.Component.Id, controllerService.Revision.Version)
 	_, err := c.JsonCall("DELETE", url, nil, nil)
 	return err
 }
@@ -469,8 +471,8 @@ func (c *Client) SetControllerServiceState(controllerService *ControllerService,
 			State: state,
 		},
 	}
-	url := fmt.Sprintf("http://%s/%s/controller-services/%s",
-		c.Config.Host, c.Config.ApiPath, controllerService.Component.Id)
+	url := fmt.Sprintf("%s://%s/%s/controller-services/%s",
+		c.HttpScheme, c.Config.Host, c.Config.ApiPath, controllerService.Component.Id)
 	_, err := c.JsonCall("PUT", url, stateUpdate, controllerService)
 	return err
 }
@@ -727,6 +729,15 @@ type PortComponent struct {
 	State         string   `json:"state,omitempty"`
 }
 
+type PortStateComponent struct {
+	Id    string `json:"id,omitempty"`
+	State string `json:"state,omitempty"`
+}
+type PortStateUpdate struct {
+	Revision  Revision           `json:"revision"`
+	Component PortStateComponent `json:"component"`
+}
+
 func (c *Client) CreatePort(port *Port) error {
 	parent_group_id := port.Component.ParentGroupId
 	port_type := port.Component.PortType
@@ -758,7 +769,10 @@ func (c *Client) UpdatePort(port *Port) error {
 	default:
 		log.Fatal(fmt.Printf("Invalid port type : %s.", port_type))
 	}
-	_, err := c.JsonCall("PUT", url, port, port)
+	responseCode, err := c.JsonCall("PUT", url, port, port)
+	if responseCode == 409 {
+		log.Printf("[WARN]: port not updated, since it's not invalid state")
+	}
 	return err
 }
 func (c *Client) GetPort(portId string, port_type string) (*Port, error) {
@@ -790,11 +804,11 @@ func (c *Client) DeletePort(port *Port) error {
 	url := ""
 	switch port_type {
 	case "INPUT_PORT":
-		url = fmt.Sprintf("%s://%s/%s/input-ports/%s",
-			c.HttpScheme, c.Config.Host, c.Config.ApiPath, port_id)
+		url = fmt.Sprintf("%s://%s/%s/input-ports/%s?version=%d",
+			c.HttpScheme, c.Config.Host, c.Config.ApiPath, port_id, port.Revision.Version)
 	case "OUTPUT_PORT":
-		url = fmt.Sprintf("%s://%s/%s/output-ports/%s",
-			c.HttpScheme, c.Config.Host, c.Config.ApiPath, port_id)
+		url = fmt.Sprintf("%s://%s/%s/output-ports/%s?version=%d",
+			c.HttpScheme, c.Config.Host, c.Config.ApiPath, port_id, port.Revision.Version)
 	default:
 		log.Fatal(fmt.Printf("Invalid port type : %s.", port_type))
 	}
@@ -803,30 +817,76 @@ func (c *Client) DeletePort(port *Port) error {
 }
 
 func (c *Client) SetPortState(port *Port, state string) error {
-	stateUpdate := Port{
+	log.Printf("Set port to state ********************************%s", state)
+	//https://community.hortonworks.com/questions/67900/startstop-processor-via-nifi-api.html
+	stateUpdate := PortStateUpdate{
 		Revision: Revision{
 			Version: port.Revision.Version,
 		},
-		Component: PortComponent{
+		Component: PortStateComponent{
 			Id:    port.Component.Id,
 			State: state,
 		},
 	}
 
 	port_type := port.Component.PortType
+	portId := port.Component.Id
 	url := ""
 	switch port_type {
 	case "INPUT_PORT":
 		url = fmt.Sprintf("%s://%s/%s/input-ports/%s",
-			c.HttpScheme, c.Config.Host, c.Config.ApiPath, port.Component.Id)
+			c.HttpScheme, c.Config.Host, c.Config.ApiPath, portId)
 	case "OUTPUT_PORT":
 		url = fmt.Sprintf("%s://%s/%s/output-ports/%s",
-			c.HttpScheme, c.Config.Host, c.Config.ApiPath, port.Component.Id)
+			c.HttpScheme, c.Config.Host, c.Config.ApiPath, portId)
 	default:
 		log.Fatal(fmt.Printf("Invalid port type : %s.", port_type))
 	}
+	var buffer = new(bytes.Buffer)
+	json.NewEncoder(buffer).Encode(stateUpdate)
+	log.Printf(url)
+	log.Printf(buffer.String())
+	buffer = new(bytes.Buffer)
+	json.NewEncoder(buffer).Encode(port)
+	log.Printf(buffer.String())
 
-	_, err := c.JsonCall("PUT", url, stateUpdate, port)
+	responseCode, err := c.JsonCall("PUT", url, stateUpdate, port)
+	if err != nil {
+		log.Printf(fmt.Sprintf("[Fatal]: Failed to set state of  Port, error code %s.", err))
+		if responseCode == 409 {
+			// if 409, same state
+			log.Printf(fmt.Sprintf("[WARN]: 409 %s.", err))
+			err = nil
+		}
+	}
+
+	//verify port state
+	maxAttempts := 5
+	state_verified := false
+	for iteration := 0; iteration < maxAttempts; iteration++ {
+		// Check status of the request
+		// Wait a bit
+		time.Sleep(3 * time.Second)
+		_, err = c.JsonCall("GET", url, nil, port)
+		if nil != err {
+			continue
+		} else {
+			if port.Component.State == state {
+				log.Printf("[DEBUG] port status set")
+				state_verified = true
+				break
+			}
+		}
+		// Log progress
+		log.Printf("[INFO] Checking Port status %d %d...", portId, iteration+1)
+
+		if maxAttempts-1 == iteration {
+			log.Printf("[INFO] Failed to verify Port new status %s", state)
+		}
+	}
+	if !state_verified {
+		log.Printf("[INFO] Failed to verify Port new status %s", state)
+	}
 	return err
 }
 
@@ -836,4 +896,76 @@ func (c *Client) StartPort(port *Port) error {
 
 func (c *Client) StopPort(port *Port) error {
 	return c.SetPortState(port, "STOPPED")
+}
+
+func (c *Client) DisablePort(port *Port) error {
+	return c.SetPortState(port, "DISABLED")
+}
+
+func (c *Client) StopConnectionHand(connectionHand *ConnectionHand) error {
+	handType := connectionHand.Type
+	handId := connectionHand.Id
+	switch handType {
+	case "PROCESSOR":
+		processor, err := c.GetProcessor(handId)
+		if err != nil {
+			return c.StopProcessor(processor)
+		} else {
+			return err
+		}
+	case "INPUT_PORT":
+		log.Printf("Stop input port %s", handId)
+		port, err := c.GetPort(handId, "INPUT_PORT")
+		if err == nil {
+			return c.StopPort(port)
+		} else {
+			log.Printf("Fail to get Port %s", handId)
+			return err
+		}
+	case "OUTPUT_PORT":
+		log.Printf("Stop output port %s", handId)
+		port, err := c.GetPort(handId, "OUTPUT_PORT")
+		if err == nil {
+			return c.StopPort(port)
+		} else {
+			log.Printf("Fail to get Port %s", handId)
+			return err
+		}
+	default:
+		log.Println(fmt.Sprintf("[WARN]: not supported connection source/target type : %s", handType))
+	}
+	return nil
+}
+
+func (c *Client) StartConnectionHand(connectionHand *ConnectionHand) error {
+	handType := connectionHand.Type
+	handId := connectionHand.Id
+	switch handType {
+	case "PROCESSOR":
+		processor, err := c.GetProcessor(handId)
+		if err != nil {
+			return c.StartProcessor(processor)
+		} else {
+			return err
+		}
+	case "INPUT_PORT":
+		log.Printf("Start input port")
+		port, err := c.GetPort(handId, "INPUT_PORT")
+		if err == nil {
+			return c.StartPort(port)
+		} else {
+			return err
+		}
+	case "OUTPUT_PORT":
+		log.Printf("Start output port")
+		port, err := c.GetPort(handId, "OUTPUT_PORT")
+		if err == nil {
+			return c.StartPort(port)
+		} else {
+			return err
+		}
+	default:
+		log.Println(fmt.Sprintf("[WARN]: not supported connection source/target type : %s", handType))
+	}
+	return nil
 }

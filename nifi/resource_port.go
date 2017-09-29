@@ -38,7 +38,7 @@ func ResourcePort() *schema.Resource {
 						"position": SchemaPosition(),
 						"comments": {
 							Type:     schema.TypeString,
-							Required: false,
+							Optional: true,
 						},
 					},
 				},
@@ -64,14 +64,17 @@ func ResourcePortCreate(d *schema.ResourceData, meta interface{}) error {
 		return fmt.Errorf("Failed to create Port")
 	}
 
-	// Start processor upon creation
-	err = client.StartPort(port)
-	if nil != err {
-		log.Printf("[INFO] Failed to start Port: %s ", port.Component.Id)
-	}
 	// Indicate successful creation
 	d.SetId(port.Component.Id)
 	d.Set("parent_group_id", parentGroupId)
+
+	// Start processor upon creation, cannot start input port when there is no connection
+	if port.Component.PortType == "OUTPUT_PORT" {
+		err = client.StartPort(port)
+		if nil != err {
+			log.Printf("[INFO] Failed to start Port: %s ", port.Component.Id)
+		}
+	}
 
 	return ResourcePortRead(d, meta)
 }
@@ -104,12 +107,19 @@ func ResourcePortUpdate(d *schema.ResourceData, meta interface{}) error {
 	client.Lock.Lock()
 	log.Printf("[INFO] Updating Port: %s...", d.Id())
 	err := ResourcePortUpdateInternal(d, meta)
-	log.Printf("[INFO] Port updated: %s", d.Id())
+	if err != nil {
+		log.Printf("[WARN] Port update failure")
+	} else {
+		log.Printf("[INFO] Port updated: %s", d.Id())
+	}
 	defer client.Lock.Unlock()
 	return err
 }
 
 func ResourcePortUpdateInternal(d *schema.ResourceData, meta interface{}) error {
+	// Enable partial state mode
+	d.Partial(true)
+
 	portId := d.Id()
 	v := d.Get("component").([]interface{})
 	if len(v) != 1 {
@@ -125,36 +135,38 @@ func ResourcePortUpdateInternal(d *schema.ResourceData, meta interface{}) error 
 			d.SetId("")
 			return nil
 		} else {
-			return fmt.Errorf("Error retrieving Processor: %s", portId)
+			return fmt.Errorf("Error retrieving Port: %s, do NOT change port type", portId)
 		}
 	}
 
-	// Stop processor if it is currently running
+	// Stop port if it is currently running
 	if "RUNNING" == port.Component.State {
 		err = client.StopPort(port)
 		if err != nil {
-			return fmt.Errorf("Failed to stop Port: %s", portId)
+			log.Printf("[INFO] Failed to stop Port: %s ", port.Component.Id)
+		} else {
+			log.Printf("[INFO] Port now in state: %s ", port.Component.State)
 		}
 	}
+	log.Printf("[INFO] ******0")
 
-	// Load processor's desired state
 	err = PortFromSchema(d, port)
 	if err != nil {
 		return fmt.Errorf("Failed to parse Port schema: %s", portId)
 	}
+	log.Printf("[INFO] ******1")
+	err = client.UpdatePort(port)
+	if err != nil {
+		return fmt.Errorf("Failed to update Port: %s", err)
+	}
 
-	// Update processor
-	// err = client.UpdateProcessor(processor)
-	// if err != nil {
-	// 	return fmt.Errorf("Failed to update Processor: %s", processorId)
-	// }
-
+	log.Printf("[INFO] ******2")
 	// Start processor again
 	err = client.StartPort(port)
 	if err != nil {
 		log.Printf("[INFO] Failed to start Port: %s", portId)
 	}
-
+	log.Printf("[INFO] Done update port %s", portId)
 	return ResourcePortRead(d, meta)
 }
 
@@ -162,8 +174,12 @@ func ResourcePortDelete(d *schema.ResourceData, meta interface{}) error {
 	client := meta.(*Client)
 	client.Lock.Lock()
 	log.Printf("[INFO] Deleting Port: %s...", d.Id())
-	err := ResourceProcessorDeleteInternal(d, meta)
-	log.Printf("[INFO] Port deleted: %s", d.Id())
+	err := ResourcePortDeleteInternal(d, meta)
+	if err != nil {
+		log.Printf("[INFO] Port deleted: %s", d.Id())
+	} else {
+		log.Printf("[INFO] Failed to delete Port: %s", d.Id())
+	}
 	defer client.Lock.Unlock()
 	return err
 }
@@ -176,7 +192,7 @@ func ResourcePortDeleteInternal(d *schema.ResourceData, meta interface{}) error 
 	}
 	component := v[0].(map[string]interface{})
 	port_type := component["type"].(string)
-
+	log.Printf("Deleteing port ********************************%s,%s, %s", port_type, portId)
 	// Refresh processor details
 	client := meta.(*Client)
 	port, err := client.GetPort(portId, port_type)
@@ -188,16 +204,23 @@ func ResourcePortDeleteInternal(d *schema.ResourceData, meta interface{}) error 
 			return fmt.Errorf("Error retrieving Port: %s", portId)
 		}
 	}
-
+	log.Printf("Deleteing port ********************************1")
 	// Stop processor if it is currently running
-	if "RUNNING" == port.Component.State {
+	if "STOPPED" != port.Component.State {
 		err = client.StopPort(port)
 		if err != nil {
-			return fmt.Errorf("Failed to stop Port: %s", portId)
+			return fmt.Errorf("[WARN] Failed to stop Port: %s", portId)
+		} else {
+			//refresh version
+			port, err = client.GetPort(portId, port_type)
+			if err != nil {
+				return fmt.Errorf("Failed to reload Port: %s", portId)
+			}
 		}
 	}
-
+	//refresh version
 	// Delete processor
+	log.Printf("Deleteing port ********************************2")
 	err = client.DeletePort(port)
 	if err != nil {
 		return fmt.Errorf("Error deleting Port: %s", portId)
@@ -263,8 +286,8 @@ func PortToSchema(d *schema.ResourceData, port *Port) error {
 
 	component := []map[string]interface{}{{
 		"parent_group_id": d.Get("parent_group_id").(string),
-		"name":            port.Component.Name,
-		"type":            port.Component.PortType,
+		"name":            interface{}(port.Component.Name).(string),
+		"type":            interface{}(port.Component.PortType).(string),
 		"position": []map[string]interface{}{{
 			"x": port.Component.Position.X,
 			"y": port.Component.Position.Y,

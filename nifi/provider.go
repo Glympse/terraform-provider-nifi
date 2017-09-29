@@ -39,6 +39,7 @@ func Provider() terraform.ResourceProvider {
 			"nifi_controller_service": ResourceControllerService(),
 			"nifi_user":               ResourceUser(),
 			"nifi_group":              ResourceGroup(),
+			"nifi_port":               ResourcePort(),
 		},
 
 		ConfigureFunc: providerConfigure,

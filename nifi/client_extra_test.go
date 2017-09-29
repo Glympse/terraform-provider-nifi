@@ -269,3 +269,24 @@ func TestClientInputPortCreate(t *testing.T) {
 	err = client.UpdatePort(&inputPort)
 	assert.Equal(t, err, nil)
 }
+
+func TestClientOutputPortStop(t *testing.T) {
+
+	config := Config{
+		Host:          "127.0.0.1:9443",
+		ApiPath:       "nifi-api",
+		AdminCertPath: "/opt/nifi-toolkit/target/nifi-admin.pem",
+		AdminKeyPath:  "/opt/nifi-toolkit/target/nifi-admin.key",
+	}
+	client := NewClient(config)
+	port, error := client.GetPort("cefbdfcc-015e-1000-c243-99e6d5e08d92", "OUTPUT_PORT")
+	log.Printf(fmt.Sprintf("Error: %s", error))
+	error = client.StopPort(port)
+	log.Printf(fmt.Sprintf("Error: %s", error))
+	// time.Sleep(time.Second * 2)
+	// error = client.StartPort(port)
+	// log.Printf(fmt.Sprintf("Error: %s", error))
+	// time.Sleep(time.Second * 2)
+	// error = client.StopPort(port)
+	// log.Printf(fmt.Sprintf("Error: %s", error))
+}
