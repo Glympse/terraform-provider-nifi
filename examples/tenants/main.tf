@@ -50,3 +50,43 @@ resource "nifi_group" "test_group2" {
     users=["${list(nifi_user.test_user.id, nifi_user.test_user2.id)}"]
   }
 }
+
+resource "nifi_port" "test_input_1" {
+  component {
+    name = "test_input_1"
+    parent_group_id = "${var.nifi_root_process_group_id}"
+    type = "INPUT_PORT"
+    position{ x=0 y=0}
+  }
+  lifecycle {
+    ignore_changes = ["component.0.position.0.x","component.0.position.0.y", "component.0.type"]
+  }
+}
+
+resource "nifi_port" "test_output_1" {
+  component {
+    name = "test_output_1"
+    parent_group_id = "${var.nifi_root_process_group_id}"
+    type = "OUTPUT_PORT"
+    position{ x=0 y=0}
+  }
+  lifecycle {
+    ignore_changes = ["component.0.position.0.x","component.0.position.0.y", "component.0.type"]
+  }
+}
+
+resource "nifi_connection" "test_input_output" {
+  component {
+    parent_group_id = "${var.nifi_root_process_group_id}"
+    destination {
+      type = "OUTPUT_PORT"
+      id = "${nifi_port.test_output_1.id}"
+      group_id  = "${var.nifi_root_process_group_id}"
+    }
+    source {
+      type = "INPUT_PORT"
+      id = "${nifi_port.test_input_1.id}"
+      group_id  = "${var.nifi_root_process_group_id}"
+    }
+  }
+}
