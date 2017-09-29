@@ -23,12 +23,12 @@ func Provider() terraform.ResourceProvider {
 			"admin_cert": &schema.Schema{
 				Type:        schema.TypeString,
 				Optional:    true,
-				DefaultFunc: schema.EnvDefaultFunc("NIFI_ADMIN_CERT", nil),
+				DefaultFunc: schema.EnvDefaultFunc("NIFI_ADMIN_CERT", ""),
 			},
 			"admin_key": &schema.Schema{
 				Type:        schema.TypeString,
 				Optional:    true,
-				DefaultFunc: schema.EnvDefaultFunc("NIFI_ADMIN_KEY", nil),
+				DefaultFunc: schema.EnvDefaultFunc("NIFI_ADMIN_KEY", ""),
 			},
 		},
 

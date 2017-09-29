@@ -98,7 +98,6 @@ func ResourceConnection() *schema.Resource {
 func ResourceConnectionCreate(d *schema.ResourceData, meta interface{}) error {
 	connection := Connection{}
 	connection.Revision.Version = 0
-	log.Printf("[INFO] *************************-2")
 	err := ConnectionFromSchema(d, &connection)
 	if err != nil {
 		return fmt.Errorf("Failed to parse Connection schema")
@@ -107,18 +106,12 @@ func ResourceConnectionCreate(d *schema.ResourceData, meta interface{}) error {
 
 	// Create connection
 	client := meta.(*Client)
-	log.Printf("[INFO] *************************-1")
 	err = client.CreateConnection(&connection)
 	if err != nil {
 		return fmt.Errorf("Failed to create Connection %s", err)
 	}
-	log.Printf("[INFO] *************************0")
-	// Start related processors
-	// ConnectionStartProcessor(client, connection.Component.Source.Id)
-	// ConnectionStartProcessor(client, connection.Component.Destination.Id)
 	client.StartConnectionHand(&connection.Component.Source)
 	client.StartConnectionHand(&connection.Component.Destination)
-	log.Printf("[INFO] *************************0")
 	// Indicate successful creation
 	d.SetId(connection.Component.Id)
 	d.Set("parent_group_id", parentGroupId)
@@ -148,7 +141,11 @@ func ResourceConnectionUpdate(d *schema.ResourceData, meta interface{}) error {
 	client.Lock.Lock()
 	log.Printf("[INFO] Updating Connection: %s...", d.Id())
 	err := ResourceConnectionUpdateInternal(d, meta)
-	log.Printf("[INFO] Connection updated: %s", d.Id())
+	if err == nil {
+		log.Printf("[INFO] Connection updated: %s", d.Id())
+	} else {
+		log.Printf("[ERROR] Connection update failed: %s", d.Id())
+	}
 	defer client.Lock.Unlock()
 	return err
 }
@@ -191,8 +188,7 @@ func ResourceConnectionUpdateInternal(d *schema.ResourceData, meta interface{}) 
 	}
 
 	// Start related processors
-	// ConnectionStartProcessor(client, connection.Component.Source.Id)
-	// ConnectionStartProcessor(client, connection.Component.Destination.Id)
+
 	client.StartConnectionHand(&connection.Component.Source)
 	client.StartConnectionHand(&connection.Component.Destination)
 
@@ -205,7 +201,9 @@ func ResourceConnectionDelete(d *schema.ResourceData, meta interface{}) error {
 	log.Printf("[INFO] Deleting Connection: %s...", d.Id())
 	err := ResourceConnectionDeleteInternal(d, meta)
 	if err != nil {
-		log.Printf("[INFO] Connection deleted: %s", d.Id())
+		log.Printf("[ERROR] Connection deletion failed: %s", d.Id())
+	} else {
+		log.Printf("[Info] Connection deleted: %s", d.Id())
 	}
 	defer client.Lock.Unlock()
 	return err
@@ -228,12 +226,11 @@ func ResourceConnectionDeleteInternal(d *schema.ResourceData, meta interface{}) 
 	source := &connection.Component.Source
 	destination := &connection.Component.Destination
 	// Stop related processors if it is started
-	//err = ConnectionStopProcessor(client, connection.Component.Source.Id)
 	err = client.StopConnectionHand(source)
 	if err != nil {
 		return fmt.Errorf("Failed to stop source Processor: %s", connection.Component.Source.Id)
 	}
-	//err = ConnectionStopProcessor(client, connection.Component.Destination.Id)
+
 	err = client.StopConnectionHand(destination)
 	if err != nil {
 		return fmt.Errorf("Failed to stop destination Processor: %s", connection.Component.Destination.Id)
@@ -247,7 +244,6 @@ func ResourceConnectionDeleteInternal(d *schema.ResourceData, meta interface{}) 
 	}
 
 	// Delete connection
-	log.Printf("[INFO] Deleting connection %d", connection.Revision.Version)
 	// refresh conneciton so that the source/dest running status passing check
 	connection, err = client.GetConnection(connectionId)
 	if err != nil {
@@ -259,8 +255,6 @@ func ResourceConnectionDeleteInternal(d *schema.ResourceData, meta interface{}) 
 	}
 
 	// Start related processors
-	// ConnectionStartProcessor(client, connection.Component.Source.Id)
-	// ConnectionStartProcessor(client, connection.Component.Destination.Id)
 	client.StartConnectionHand(source)
 	client.StartConnectionHand(destination)
 
@@ -285,36 +279,6 @@ func ResourceConnectionExists(d *schema.ResourceData, meta interface{}) (bool, e
 
 	return true, nil
 }
-
-// Processor Helpers
-
-// func ConnectionStartProcessor(client *Client, processorId string) error {
-// 	processor, err := client.GetProcessor(processorId)
-// 	if err != nil {
-// 		return fmt.Errorf("Error retrieving Processor: %s", processorId)
-// 	}
-// 	if "RUNNING" != processor.Component.State {
-// 		err = client.StartProcessor(processor)
-// 		if err != nil {
-// 			return fmt.Errorf("Failed to start Processor: %s", processorId)
-// 		}
-// 	}
-// 	return nil
-// }
-//
-// func ConnectionStopProcessor(client *Client, processorId string) error {
-// 	processor, err := client.GetProcessor(processorId)
-// 	if err != nil {
-// 		return fmt.Errorf("Error retrieving Processor: %s", processorId)
-// 	}
-// 	if "RUNNING" == processor.Component.State {
-// 		err = client.StopProcessor(processor)
-// 		if err != nil {
-// 			return fmt.Errorf("Failed to stop Processor: %s", processorId)
-// 		}
-// 	}
-// 	return nil
-// }
 
 // Schema Helpers
 

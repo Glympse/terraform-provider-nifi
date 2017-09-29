@@ -80,11 +80,11 @@ func (c *Client) JsonCall(method string, url string, bodyIn interface{}, bodyOut
 	}
 
 	response, err := c.Client.Do(request)
+	log.Printf("[DEBUG]: http call error code: %d", response.StatusCode)
 	if err != nil {
 		return 0, err
 	}
 	if response.StatusCode >= 300 {
-		log.Printf("[DEBUG]: http call error code: %d", response.StatusCode)
 		return response.StatusCode, fmt.Errorf("The call has failed with the code of %d", response.StatusCode)
 	}
 	defer response.Body.Close()
@@ -114,15 +114,15 @@ type ProcessGroup struct {
 }
 
 func (c *Client) CreateProcessGroup(processGroup *ProcessGroup) error {
-	url := fmt.Sprintf("http://%s/%s/process-groups/%s/process-groups",
-		c.Config.Host, c.Config.ApiPath, processGroup.Component.ParentGroupId)
+	url := fmt.Sprintf("%s://%s/%s/process-groups/%s/process-groups",
+		c.HttpScheme, c.Config.Host, c.Config.ApiPath, processGroup.Component.ParentGroupId)
 	_, err := c.JsonCall("POST", url, processGroup, processGroup)
 	return err
 }
 
 func (c *Client) GetProcessGroup(processGroupId string) (*ProcessGroup, error) {
-	url := fmt.Sprintf("http://%s/%s/process-groups/%s",
-		c.Config.Host, c.Config.ApiPath, processGroupId)
+	url := fmt.Sprintf("%s://%s/%s/process-groups/%s",
+		c.HttpScheme, c.Config.Host, c.Config.ApiPath, processGroupId)
 	processGroup := ProcessGroup{}
 	code, err := c.JsonCall("GET", url, nil, &processGroup)
 	if 404 == code {
@@ -135,22 +135,22 @@ func (c *Client) GetProcessGroup(processGroupId string) (*ProcessGroup, error) {
 }
 
 func (c *Client) UpdateProcessGroup(processGroup *ProcessGroup) error {
-	url := fmt.Sprintf("http://%s/%s/process-groups/%s",
-		c.Config.Host, c.Config.ApiPath, processGroup.Component.Id)
+	url := fmt.Sprintf("%s://%s/%s/process-groups/%s",
+		c.HttpScheme, c.Config.Host, c.Config.ApiPath, processGroup.Component.Id)
 	_, err := c.JsonCall("PUT", url, processGroup, processGroup)
 	return err
 }
 
 func (c *Client) DeleteProcessGroup(processGroup *ProcessGroup) error {
-	url := fmt.Sprintf("http://%s/%s/process-groups/%s?version=%d",
-		c.Config.Host, c.Config.ApiPath, processGroup.Component.Id, processGroup.Revision.Version)
+	url := fmt.Sprintf("%s://%s/%s/process-groups/%s?version=%d",
+		c.HttpScheme, c.Config.Host, c.Config.ApiPath, processGroup.Component.Id, processGroup.Revision.Version)
 	_, err := c.JsonCall("DELETE", url, nil, nil)
 	return err
 }
 
 func (c *Client) GetProcessGroupConnections(processGroupId string) (*Connections, error) {
-	url := fmt.Sprintf("http://%s/%s/process-groups/%s/connections",
-		c.Config.Host, c.Config.ApiPath, processGroupId)
+	url := fmt.Sprintf("%s://%s/%s/process-groups/%s/connections",
+		c.HttpScheme, c.Config.Host, c.Config.ApiPath, processGroupId)
 	connections := Connections{}
 	_, err := c.JsonCall("GET", url, nil, &connections)
 	if nil != err {
@@ -210,8 +210,8 @@ func (c *Client) CleanupNilProperties(properties map[string]interface{}) error {
 }
 
 func (c *Client) CreateProcessor(processor *Processor) error {
-	url := fmt.Sprintf("http://%s/%s/process-groups/%s/processors",
-		c.Config.Host, c.Config.ApiPath, processor.Component.ParentGroupId)
+	url := fmt.Sprintf("%s://%s/%s/process-groups/%s/processors",
+		c.HttpScheme, c.Config.Host, c.Config.ApiPath, processor.Component.ParentGroupId)
 	_, err := c.JsonCall("POST", url, processor, processor)
 	if nil != err {
 		return err
@@ -221,8 +221,8 @@ func (c *Client) CreateProcessor(processor *Processor) error {
 }
 
 func (c *Client) GetProcessor(processorId string) (*Processor, error) {
-	url := fmt.Sprintf("http://%s/%s/processors/%s",
-		c.Config.Host, c.Config.ApiPath, processorId)
+	url := fmt.Sprintf("%s://%s/%s/processors/%s",
+		c.HttpScheme, c.Config.Host, c.Config.ApiPath, processorId)
 	processor := ProcessorStub()
 	code, err := c.JsonCall("GET", url, nil, &processor)
 	if 404 == code {
@@ -246,8 +246,8 @@ func (c *Client) GetProcessor(processorId string) (*Processor, error) {
 }
 
 func (c *Client) UpdateProcessor(processor *Processor) error {
-	url := fmt.Sprintf("http://%s/%s/processors/%s",
-		c.Config.Host, c.Config.ApiPath, processor.Component.Id)
+	url := fmt.Sprintf("%s://%s/%s/processors/%s",
+		c.HttpScheme, c.Config.Host, c.Config.ApiPath, processor.Component.Id)
 	_, err := c.JsonCall("PUT", url, processor, processor)
 	if nil != err {
 		return err
@@ -257,8 +257,8 @@ func (c *Client) UpdateProcessor(processor *Processor) error {
 }
 
 func (c *Client) DeleteProcessor(processor *Processor) error {
-	url := fmt.Sprintf("http://%s/%s/processors/%s?version=%d",
-		c.Config.Host, c.Config.ApiPath, processor.Component.Id, processor.Revision.Version)
+	url := fmt.Sprintf("%s://%s/%s/processors/%s?version=%d",
+		c.HttpScheme, c.Config.Host, c.Config.ApiPath, processor.Component.Id, processor.Revision.Version)
 	_, err := c.JsonCall("DELETE", url, nil, nil)
 	return err
 }
@@ -273,8 +273,8 @@ func (c *Client) SetProcessorState(processor *Processor, state string) error {
 			State: state,
 		},
 	}
-	url := fmt.Sprintf("http://%s/%s/processors/%s",
-		c.Config.Host, c.Config.ApiPath, processor.Component.Id)
+	url := fmt.Sprintf("%s://%s/%s/processors/%s",
+		c.HttpScheme, c.Config.Host, c.Config.ApiPath, processor.Component.Id)
 	_, err := c.JsonCall("PUT", url, stateUpdate, processor)
 	return err
 }
@@ -817,7 +817,7 @@ func (c *Client) DeletePort(port *Port) error {
 }
 
 func (c *Client) SetPortState(port *Port, state string) error {
-	log.Printf("Set port to state ********************************%s", state)
+	log.Printf("[Info] Set port to state %s", state)
 	//https://community.hortonworks.com/questions/67900/startstop-processor-via-nifi-api.html
 	stateUpdate := PortStateUpdate{
 		Revision: Revision{
@@ -842,17 +842,17 @@ func (c *Client) SetPortState(port *Port, state string) error {
 	default:
 		log.Fatal(fmt.Printf("Invalid port type : %s.", port_type))
 	}
-	var buffer = new(bytes.Buffer)
-	json.NewEncoder(buffer).Encode(stateUpdate)
-	log.Printf(url)
-	log.Printf(buffer.String())
-	buffer = new(bytes.Buffer)
-	json.NewEncoder(buffer).Encode(port)
-	log.Printf(buffer.String())
+	// var buffer = new(bytes.Buffer)
+	// json.NewEncoder(buffer).Encode(stateUpdate)
+	// log.Printf(url)
+	// log.Printf(buffer.String())
+	// buffer = new(bytes.Buffer)
+	// json.NewEncoder(buffer).Encode(port)
+	// log.Printf(buffer.String())
 
 	responseCode, err := c.JsonCall("PUT", url, stateUpdate, port)
 	if err != nil {
-		log.Printf(fmt.Sprintf("[Fatal]: Failed to set state of  Port, error code %s.", err))
+		log.Printf("[Fatal]: Failed to set state of  Port, error code %s.", err)
 		if responseCode == 409 {
 			// if 409, same state
 			log.Printf(fmt.Sprintf("[WARN]: 409 %s.", err))
@@ -878,14 +878,14 @@ func (c *Client) SetPortState(port *Port, state string) error {
 			}
 		}
 		// Log progress
-		log.Printf("[INFO] Checking Port status %d %d...", portId, iteration+1)
+		log.Printf("[DEBUG] Checking Port status %d %d...", portId, iteration+1)
 
 		if maxAttempts-1 == iteration {
-			log.Printf("[INFO] Failed to verify Port new status %s", state)
+			log.Printf("[DEBUG] Failed to verify Port new status %s", state)
 		}
 	}
 	if !state_verified {
-		log.Printf("[INFO] Failed to verify Port new status %s", state)
+		log.Printf("[DEBUG] Failed to verify Port new status %s", state)
 	}
 	return err
 }
@@ -905,6 +905,7 @@ func (c *Client) DisablePort(port *Port) error {
 func (c *Client) StopConnectionHand(connectionHand *ConnectionHand) error {
 	handType := connectionHand.Type
 	handId := connectionHand.Id
+	log.Printf("[DEBUG] Stop connection hand %s , %d", handType, handId)
 	switch handType {
 	case "PROCESSOR":
 		processor, err := c.GetProcessor(handId)
@@ -914,7 +915,6 @@ func (c *Client) StopConnectionHand(connectionHand *ConnectionHand) error {
 			return err
 		}
 	case "INPUT_PORT":
-		log.Printf("Stop input port %s", handId)
 		port, err := c.GetPort(handId, "INPUT_PORT")
 		if err == nil {
 			return c.StopPort(port)
@@ -923,7 +923,6 @@ func (c *Client) StopConnectionHand(connectionHand *ConnectionHand) error {
 			return err
 		}
 	case "OUTPUT_PORT":
-		log.Printf("Stop output port %s", handId)
 		port, err := c.GetPort(handId, "OUTPUT_PORT")
 		if err == nil {
 			return c.StopPort(port)
@@ -932,7 +931,7 @@ func (c *Client) StopConnectionHand(connectionHand *ConnectionHand) error {
 			return err
 		}
 	default:
-		log.Println(fmt.Sprintf("[WARN]: not supported connection source/target type : %s", handType))
+		log.Fatal(fmt.Sprintf("[WARN]: not supported connection source/target type : %s", handType))
 	}
 	return nil
 }
@@ -940,6 +939,7 @@ func (c *Client) StopConnectionHand(connectionHand *ConnectionHand) error {
 func (c *Client) StartConnectionHand(connectionHand *ConnectionHand) error {
 	handType := connectionHand.Type
 	handId := connectionHand.Id
+	log.Printf("[DEBUG] Start connection hand %s , %d", handType, handId)
 	switch handType {
 	case "PROCESSOR":
 		processor, err := c.GetProcessor(handId)
@@ -949,7 +949,6 @@ func (c *Client) StartConnectionHand(connectionHand *ConnectionHand) error {
 			return err
 		}
 	case "INPUT_PORT":
-		log.Printf("Start input port")
 		port, err := c.GetPort(handId, "INPUT_PORT")
 		if err == nil {
 			return c.StartPort(port)
@@ -957,7 +956,6 @@ func (c *Client) StartConnectionHand(connectionHand *ConnectionHand) error {
 			return err
 		}
 	case "OUTPUT_PORT":
-		log.Printf("Start output port")
 		port, err := c.GetPort(handId, "OUTPUT_PORT")
 		if err == nil {
 			return c.StartPort(port)
@@ -965,7 +963,7 @@ func (c *Client) StartConnectionHand(connectionHand *ConnectionHand) error {
 			return err
 		}
 	default:
-		log.Println(fmt.Sprintf("[WARN]: not supported connection source/target type : %s", handType))
+		log.Printf("[WARN]: not supported connection source/target type : %s", handType)
 	}
 	return nil
 }

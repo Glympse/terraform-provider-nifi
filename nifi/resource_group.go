@@ -97,7 +97,11 @@ func ResourceGroupUpdate(d *schema.ResourceData, meta interface{}) error {
 	client.Lock.Lock()
 	log.Printf("[INFO] Updating Group: %s..., not implemented", d.Id())
 	err := ResourceGroupUpdateInternal(d, meta)
-	log.Printf("[INFO] Group updated: %s", d.Id())
+	if err == nil {
+		log.Printf("[INFO] Group updated: %s", d.Id())
+	} else {
+		log.Printf("[ERROR] Group Update failed: %s", d.Id())
+	}
 	defer client.Lock.Unlock()
 	return err
 }
@@ -167,7 +171,6 @@ func ResourceGroupDeleteInternal(d *schema.ResourceData, meta interface{}) error
 }
 
 func ResourceGroupExists(d *schema.ResourceData, meta interface{}) (bool, error) {
-	log.Println("ResourceUserExists")
 	groupId := d.Id()
 	client := meta.(*Client)
 	if groupId != "" {
@@ -223,7 +226,6 @@ func ResourceGroupExists(d *schema.ResourceData, meta interface{}) (bool, error)
 // Schema Helpers
 
 func GroupFromSchema(meta interface{}, d *schema.ResourceData, group *Group) error {
-	log.Println("[DEBUG]: GroupFromScheuma")
 	v := d.Get("component").([]interface{})
 	if len(v) != 1 {
 		return fmt.Errorf("Exactly one component is required")
