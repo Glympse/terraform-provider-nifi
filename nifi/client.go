@@ -930,6 +930,9 @@ func (c *Client) StopConnectionHand(connectionHand *ConnectionHand) error {
 			log.Printf("Fail to get Port %s", handId)
 			return err
 		}
+	case "FUNNEL":
+		log.Printf("No need to stop Funnel")
+		return nil
 	default:
 		log.Fatal(fmt.Sprintf("[WARN]: not supported connection source/target type : %s", handType))
 	}
@@ -962,6 +965,9 @@ func (c *Client) StartConnectionHand(connectionHand *ConnectionHand) error {
 		} else {
 			return err
 		}
+	case "FUNNEL":
+		log.Printf("No need to start Funnel")
+		return nil
 	default:
 		log.Printf("[WARN]: not supported connection source/target type : %s", handType)
 	}
