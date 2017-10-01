@@ -41,6 +41,7 @@ func Provider() terraform.ResourceProvider {
 			"nifi_group":              ResourceGroup(),
 			"nifi_port":               ResourcePort(),
 			"nifi_remote_process_group": ResourceRemoteProcessGroup(),
+			"nifi_funnel":				ResourceFunnel(),
 		},
 
 		ConfigureFunc: providerConfigure,
