@@ -54,14 +54,14 @@ func ResourceRemoteProcessGroupCreate(d *schema.ResourceData, meta interface{}) 
 
 	err := RemoteProcessGroupFromSchema(d, &processGroup)
 	if err != nil {
-		return fmt.Errorf("Failed to parse Process Group schema")
+		return fmt.Errorf("Failed to parse Remote Process Group schema")
 	}
 	parentGroupId := processGroup.Component.ParentGroupId
 
 	client := meta.(*Client)
 	err = client.CreateRemoteProcessGroup(&processGroup)
 	if err != nil {
-		return fmt.Errorf("Failed to create Process Group")
+		return fmt.Errorf("Failed to create Remote Process Group")
 	}
 
 	d.SetId(processGroup.Component.Id)
@@ -76,12 +76,12 @@ func ResourceRemoteProcessGroupRead(d *schema.ResourceData, meta interface{}) er
 	client := meta.(*Client)
 	processGroup, err := client.GetRemoteProcessGroup(processGroupId)
 	if err != nil {
-		return fmt.Errorf("Error retrieving Process Group: %s", processGroupId)
+		return fmt.Errorf("Error retrieving Remote Process Group: %s", processGroupId)
 	}
 
 	err = RemoteProcessGroupToSchema(d, processGroup)
 	if err != nil {
-		return fmt.Errorf("Failed to serialize Process Group: %s", processGroupId)
+		return fmt.Errorf("Failed to serialize Remote Process Group: %s", processGroupId)
 	}
 
 	return nil
@@ -97,7 +97,7 @@ func ResourceRemoteProcessGroupUpdate(d *schema.ResourceData, meta interface{}) 
 			d.SetId("")
 			return nil
 		} else {
-			return fmt.Errorf("Error retrieving Process Group: %s", processGroupId)
+			return fmt.Errorf("Error retrieving Remote Process Group: %s", processGroupId)
 		}
 	}
 

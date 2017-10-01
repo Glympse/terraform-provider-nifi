@@ -116,7 +116,7 @@ func ResourceGroupUpdateInternal(d *schema.ResourceData, meta interface{}) error
 			d.SetId("")
 			return nil
 		} else {
-			return fmt.Errorf("Error retrieving Processor: %s", groupId)
+			return fmt.Errorf("Error retrieving Group: %s", groupId)
 		}
 	}
 
@@ -129,7 +129,7 @@ func ResourceGroupUpdateInternal(d *schema.ResourceData, meta interface{}) error
 	// Update group
 	err = client.UpdateGroup(group)
 	if err != nil {
-		return fmt.Errorf("Failed to update Processor: %s", groupId)
+		return fmt.Errorf("Failed to update Group: %s", groupId)
 	}
 
 	return ResourceGroupRead(d, meta)
@@ -163,7 +163,7 @@ func ResourceGroupDeleteInternal(d *schema.ResourceData, meta interface{}) error
 	// Delete group
 	err = client.DeleteGroup(group)
 	if err != nil {
-		return fmt.Errorf("Error deleting User: %s", groupId)
+		return fmt.Errorf("Error deleting Group: %s", groupId)
 	}
 
 	d.SetId("")
