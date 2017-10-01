@@ -53,7 +53,7 @@ func ResourceFunnelCreate(d *schema.ResourceData, meta interface{}) error {
 
 	// Create user
 	client := meta.(*Client)
-	err = client.CreateGroup(funnel)
+	err = client.CreateFunnel(funnel)
 	if err != nil {
 		return fmt.Errorf("Failed to create Connection")
 	}
