@@ -5,6 +5,7 @@ provider "nifi" {
   api_path =       "nifi-api"
 }
 
+
 resource "nifi_user" "test_user" {
   component {
     identity="test_user"
@@ -86,6 +87,72 @@ resource "nifi_connection" "test_input_output" {
     source {
       type = "INPUT_PORT"
       id = "${nifi_port.test_input_1.id}"
+      group_id  = "${var.nifi_root_process_group_id}"
+    }
+  }
+}
+
+
+resource "nifi_port" "test_input_2" {
+  component {
+    name = "test_input_2"
+    parent_group_id = "${var.nifi_root_process_group_id}"
+    type = "INPUT_PORT"
+    position{ x=0 y=0}
+  }
+  lifecycle {
+    ignore_changes = ["component.0.position.0.x","component.0.position.0.y", "component.0.type"]
+  }
+}
+
+resource "nifi_port" "test_input_3" {
+  component {
+    name = "test_input_3"
+    parent_group_id = "${var.nifi_root_process_group_id}"
+    type = "INPUT_PORT"
+    position{ x=0 y=0}
+  }
+  lifecycle {
+    ignore_changes = ["component.0.position.0.x","component.0.position.0.y", "component.0.type"]
+  }
+}
+resource "nifi_funnel" "test_funnel_1" {
+  component {
+    parent_group_id = "${var.nifi_root_process_group_id}"
+    position { x=0 y=0 }
+  }
+  lifecycle {
+    ignore_changes = ["component.0.position.0.x","component.0.position.0.y"]
+  }
+}
+
+resource "nifi_connection" "test_input_2_funnel_1" {
+  component {
+    parent_group_id = "${var.nifi_root_process_group_id}"
+    source {
+      type = "INPUT_PORT"
+      id = "${nifi_port.test_input_2.id}"
+      group_id  = "${var.nifi_root_process_group_id}"
+    }
+    destination {
+      type = "FUNNEL"
+      id = "${nifi_funnel.test_funnel_1.id}"
+      group_id  = "${var.nifi_root_process_group_id}"
+    }
+  }
+}
+
+resource "nifi_connection" "test_input_3_funnel_1" {
+  component {
+    parent_group_id = "${var.nifi_root_process_group_id}"
+    source {
+      type = "INPUT_PORT"
+      id = "${nifi_port.test_input_3.id}"
+      group_id  = "${var.nifi_root_process_group_id}"
+    }
+    destination {
+      type = "FUNNEL"
+      id = "${nifi_funnel.test_funnel_1.id}"
       group_id  = "${var.nifi_root_process_group_id}"
     }
   }
