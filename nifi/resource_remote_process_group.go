@@ -38,7 +38,7 @@ func ResourceRemoteProcessGroup() *schema.Resource {
 						},
 						"transportProtocol": {
 							Type:     schema.TypeString,
-							Required: true,
+							Optional: true,
 							Default:  "http",
 						},
 					},

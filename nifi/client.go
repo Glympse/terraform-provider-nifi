@@ -974,16 +974,15 @@ func (c *Client) StartConnectionHand(connectionHand *ConnectionHand) error {
 	return nil
 }
 
-
 //Funnel
 type FunnelComponent struct {
-	Id            string    `json:"id,omitempty"`
-	ParentGroupId string    `json:"parentGroupId,omitempty"`
+	Id            string   `json:"id,omitempty"`
+	ParentGroupId string   `json:"parentGroupId,omitempty"`
 	Position      Position `json:"position,omitempty"`
 }
 
 type Funnel struct {
-	Revision  Revision       `json:"revision"`
+	Revision  Revision        `json:"revision"`
 	Component FunnelComponent `json:"component"`
 }
 
@@ -995,7 +994,7 @@ func FunnelStub() *Funnel {
 	}
 }
 func (c *Client) CreateFunnel(funel *Funnel) error {
-	url := fmt.Sprintf("%s://%s/%s/processor-groups/%s/funnels",
+	url := fmt.Sprintf("%s://%s/%s/process-groups/%s/funnels",
 		c.HttpScheme, c.Config.Host, c.Config.ApiPath, funel.Component.ParentGroupId)
 	_, err := c.JsonCall("POST", url, funel, funel)
 	return err
