@@ -2,8 +2,9 @@ package nifi
 
 import (
 	"fmt"
-	"github.com/hashicorp/terraform/helper/schema"
 	"log"
+
+	"github.com/hashicorp/terraform/helper/schema"
 )
 
 func ResourceProcessGroup() *schema.Resource {
