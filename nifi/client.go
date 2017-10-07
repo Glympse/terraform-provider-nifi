@@ -15,18 +15,17 @@ import (
 type Client struct {
 	Config Config
 	Client *http.Client
-
+	HttpScheme string
 	// The mutex is used by the plugin to prevent parallel execution of some update/delete operations.
 	// There are scenarios when updating a connection involves modifying related processors and vice versa.
 	// This breaks Terraform model to some extent but at the same time is unavoidable in NiFi world.
 	// Currently only flows that involve cross-resource interactions are wrapped into lock/unlock sections.
 	// Most of operations can still be performed in parallel.
-	HttpScheme string
 	Lock       sync.Mutex
 }
 
 func NewClient(config Config) *Client {
-	http_client := &http.Client{}
+	httpClient := &http.Client{}
 	scheme := "http"
 	if config.AdminCertPath != "" && config.AdminKeyPath != "" {
 		cert, err := tls.LoadX509KeyPair(config.AdminCertPath, config.AdminKeyPath)
@@ -39,13 +38,13 @@ func NewClient(config Config) *Client {
 			tlsConfig.BuildNameToCertificate()
 			tlsConfig.InsecureSkipVerify = true
 			transport := &http.Transport{TLSClientConfig: tlsConfig}
-			http_client = &http.Client{Transport: transport}
+			httpClient = &http.Client{Transport: transport}
 			scheme = "https"
 		}
 	}
 	client := &Client{
 		Config:     config,
-		Client:     http_client,
+		Client:     httpClient,
 		HttpScheme: scheme,
 	}
 	return client
@@ -80,7 +79,7 @@ func (c *Client) JsonCall(method string, url string, bodyIn interface{}, bodyOut
 	}
 
 	response, err := c.Client.Do(request)
-	log.Printf("[DEBUG]: http call error code: %d", response.StatusCode)
+	log.Printf("[DEBUG]: http call to %s resulted in error code: %d", url, response.StatusCode)
 	if err != nil {
 		return 0, err
 	}
@@ -842,13 +841,6 @@ func (c *Client) SetPortState(port *Port, state string) error {
 	default:
 		log.Fatal(fmt.Printf("Invalid port type : %s.", port_type))
 	}
-	// var buffer = new(bytes.Buffer)
-	// json.NewEncoder(buffer).Encode(stateUpdate)
-	// log.Printf(url)
-	// log.Printf(buffer.String())
-	// buffer = new(bytes.Buffer)
-	// json.NewEncoder(buffer).Encode(port)
-	// log.Printf(buffer.String())
 
 	responseCode, err := c.JsonCall("PUT", url, stateUpdate, port)
 	if err != nil {

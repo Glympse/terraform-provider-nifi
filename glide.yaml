@@ -1,4 +1,4 @@
-package: github.com/af6140/terraform-provider-nifi
+package: github.com/glympse/terraform-provider-nifi
 excludeDirs:
 - examples
 import:

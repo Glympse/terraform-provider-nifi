@@ -166,13 +166,11 @@ func ResourceConnectionUpdateInternal(d *schema.ResourceData, meta interface{}) 
 	}
 
 	// Stop related processors
-	//err = ConnectionStopProcessor(client, connection.Component.Source.Id)
 	err = client.StopConnectionHand(&connection.Component.Source)
 	if err != nil {
 		return fmt.Errorf("Failed to stop source Processor: %s", connection.Component.Source.Id)
 	}
-	//err = ConnectionStopProcessor(client, connection.Component.Destination.Id)
-	client.StopConnectionHand(&connection.Component.Destination)
+	err = client.StopConnectionHand(&connection.Component.Destination)
 	if err != nil {
 		return fmt.Errorf("Failed to stop destination Processor: %s", connection.Component.Destination.Id)
 	}
