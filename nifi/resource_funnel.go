@@ -16,7 +16,6 @@ func ResourceFunnel() *schema.Resource {
 		Exists: ResourceFunnelExists,
 		Importer: &schema.ResourceImporter{
 			State: func(d *schema.ResourceData, meta interface{}) ([]*schema.ResourceData, error) {
-				//d.Set("name", d.Id())
 				return []*schema.ResourceData{d}, nil
 			},
 		},
@@ -86,12 +85,12 @@ func ResourceFunnelUpdate(d *schema.ResourceData, meta interface{}) error {
 	client := meta.(*Client)
 	client.Lock.Lock()
 	err := ResourceFunnelUpdateInternal(d, meta)
+	defer client.Lock.Unlock()
 	if err == nil {
 		log.Printf("[INFO] Funnel updated: %s", d.Id())
 	} else {
 		log.Printf("[ERROR] Funnel Update failed: %s", d.Id())
 	}
-	defer client.Lock.Unlock()
 	return err
 }
 func ResourceFunnelUpdateInternal(d *schema.ResourceData, meta interface{}) error {
@@ -100,13 +99,12 @@ func ResourceFunnelUpdateInternal(d *schema.ResourceData, meta interface{}) erro
 	// Refresh funnel details
 	client := meta.(*Client)
 	funnel, err := client.GetFunnel(funnelId)
+	if "not_found" == err.Error() {
+		d.SetId("")
+		return nil
+	}
 	if err != nil {
-		if "not_found" == err.Error() {
-			d.SetId("")
-			return nil
-		} else {
-			return fmt.Errorf("Error retrieving Funnel: %s", funnelId)
-		}
+		return fmt.Errorf("Error retrieving Funnel: %s", funnelId)
 	}
 
 	// Load funnel's desired state
@@ -126,15 +124,15 @@ func ResourceFunnelUpdateInternal(d *schema.ResourceData, meta interface{}) erro
 
 func ResourceFunnelDelete(d *schema.ResourceData, meta interface{}) error {
 	client := meta.(*Client)
-	client.Lock.Lock()
 	log.Printf("[INFO] Deleting Funnel: %s...", d.Id())
+	client.Lock.Lock()
 	err := ResourceFunnelDeleteInternal(d, meta)
+	defer client.Lock.Unlock()
 	if err == nil {
 		log.Printf("[INFO] Funnel deleted: %s", d.Id())
-	}else {
+	} else {
 		log.Printf("[ERROR] Funnel deletion failed: %s", d.Id())
 	}
-	defer client.Lock.Unlock()
 	return err
 }
 
@@ -144,13 +142,12 @@ func ResourceFunnelDeleteInternal(d *schema.ResourceData, meta interface{}) erro
 	// Refresh funnel details
 	client := meta.(*Client)
 	funnel, err := client.GetFunnel(funnelId)
+	if "not_found" == err.Error() {
+		d.SetId("")
+		return nil
+	}
 	if err != nil {
-		if "not_found" == err.Error() {
-			d.SetId("")
-			return nil
-		} else {
-			return fmt.Errorf("Error retrieving Funnel: %s", funnelId)
-		}
+		return fmt.Errorf("Error retrieving Funnel: %s", funnelId)
 	}
 
 	// Delete funnel
@@ -167,14 +164,13 @@ func ResourceFunnelExists(d *schema.ResourceData, meta interface{}) (bool, error
 	funnelId := d.Id()
 	client := meta.(*Client)
 	_, err := client.GetFunnel(funnelId)
+	if "not_found" == err.Error() {
+		log.Printf("[INFO] Funnel %s no longer exists, removing from state...", funnelId)
+		d.SetId("")
+		return false, nil
+	}
 	if nil != err {
-		if "not_found" == err.Error() {
-			log.Printf("[INFO] Funnel %s no longer exists, removing from state...", funnelId)
-			d.SetId("")
-			return false, nil
-		} else {
-			return false, fmt.Errorf("Error testing existence of Funnel: %s", funnelId)
-		}
+		return false, fmt.Errorf("Error testing existence of Funnel: %s", funnelId)
 	}
 	return true, nil
 }

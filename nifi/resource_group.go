@@ -16,7 +16,6 @@ func ResourceGroup() *schema.Resource {
 		Exists: ResourceGroupExists,
 		Importer: &schema.ResourceImporter{
 			State: func(d *schema.ResourceData, meta interface{}) ([]*schema.ResourceData, error) {
-				//d.Set("name", d.Id())
 				return []*schema.ResourceData{d}, nil
 			},
 		},
@@ -94,15 +93,15 @@ func ResourceGroupRead(d *schema.ResourceData, meta interface{}) error {
 
 func ResourceGroupUpdate(d *schema.ResourceData, meta interface{}) error {
 	client := meta.(*Client)
-	client.Lock.Lock()
 	log.Printf("[INFO] Updating Group: %s..., not implemented", d.Id())
+	client.Lock.Lock()
 	err := ResourceGroupUpdateInternal(d, meta)
+	defer client.Lock.Unlock()
 	if err == nil {
 		log.Printf("[INFO] Group updated: %s", d.Id())
 	} else {
 		log.Printf("[ERROR] Group Update failed: %s", d.Id())
 	}
-	defer client.Lock.Unlock()
 	return err
 }
 func ResourceGroupUpdateInternal(d *schema.ResourceData, meta interface{}) error {
@@ -111,13 +110,12 @@ func ResourceGroupUpdateInternal(d *schema.ResourceData, meta interface{}) error
 	// Refresh group details
 	client := meta.(*Client)
 	group, err := client.GetGroup(groupId)
+	if "not_found" == err.Error() {
+		d.SetId("")
+		return nil
+	}
 	if err != nil {
-		if "not_found" == err.Error() {
-			d.SetId("")
-			return nil
-		} else {
-			return fmt.Errorf("Error retrieving Group: %s", groupId)
-		}
+		return fmt.Errorf("Error retrieving Group: %s", groupId)
 	}
 
 	// Load group's desired state
@@ -137,11 +135,11 @@ func ResourceGroupUpdateInternal(d *schema.ResourceData, meta interface{}) error
 
 func ResourceGroupDelete(d *schema.ResourceData, meta interface{}) error {
 	client := meta.(*Client)
-	client.Lock.Lock()
 	log.Printf("[INFO] Deleting Group: %s...", d.Id())
+	client.Lock.Lock()
 	err := ResourceGroupDeleteInternal(d, meta)
-	log.Printf("[INFO] Group deleted: %s", d.Id())
 	defer client.Lock.Unlock()
+	log.Printf("[INFO] Group deleted: %s", d.Id())
 	return err
 }
 
@@ -151,13 +149,12 @@ func ResourceGroupDeleteInternal(d *schema.ResourceData, meta interface{}) error
 	// Refresh group details
 	client := meta.(*Client)
 	group, err := client.GetGroup(groupId)
+	if "not_found" == err.Error() {
+		d.SetId("")
+		return nil
+	}
 	if err != nil {
-		if "not_found" == err.Error() {
-			d.SetId("")
-			return nil
-		} else {
-			return fmt.Errorf("Error retrieving Group: %s", groupId)
-		}
+		return fmt.Errorf("Error retrieving Group: %s", groupId)
 	}
 
 	// Delete group
@@ -175,14 +172,13 @@ func ResourceGroupExists(d *schema.ResourceData, meta interface{}) (bool, error)
 	client := meta.(*Client)
 	if groupId != "" {
 		_, err := client.GetGroup(groupId)
+		if "not_found" == err.Error() {
+			log.Printf("[INFO] Group %s no longer exists, removing from state...", groupId)
+			d.SetId("")
+			return false, nil
+		}
 		if nil != err {
-			if "not_found" == err.Error() {
-				log.Printf("[INFO] Group %s no longer exists, removing from state...", groupId)
-				d.SetId("")
-				return false, nil
-			} else {
-				return false, fmt.Errorf("Error testing existence of Group: %s", groupId)
-			}
+			return false, fmt.Errorf("Error testing existence of Group: %s", groupId)
 		}
 	} else {
 		v := d.Get("component").([]interface{})
@@ -193,28 +189,26 @@ func ResourceGroupExists(d *schema.ResourceData, meta interface{}) (bool, error)
 			groupIden := component["identity"].(string)
 			if groupIden != "" {
 				groupIds, err := client.GetGroupIdsWithIdentity(groupIden)
-				if nil != err {
-					if "not_found" == err.Error() {
-						log.Printf("[INFO] Group %s no longer exists, removing from state...", groupIden)
-						d.SetId("")
-						return false, nil
-					} else {
-						return false, fmt.Errorf("Error testing existence of Group: %s", groupIden)
-					}
-				} else {
-					if len(groupIds) == 1 {
-						d.SetId(groupIds[0])
-						return true, nil
-					} else {
-						if len(groupIds) > 1 {
-							d.SetId("")
-							return false, fmt.Errorf("Error more than one Group found with identity: %s", groupIden)
-						} else {
-							d.SetId("")
-							return false, fmt.Errorf("Error testing existence of Group: %s", groupIden)
-						}
-					}
+				if "not_found" == err.Error() {
+					log.Printf("[INFO] Group %s no longer exists, removing from state...", groupIden)
+					d.SetId("")
+					return false, nil
 				}
+				if nil != err {
+					return false, fmt.Errorf("Error testing existence of Group: %s", groupIden)
+				}
+				if len(groupIds) == 1 {
+					d.SetId(groupIds[0])
+					return true, nil
+				}
+				if len(groupIds) > 1 {
+					d.SetId("")
+					return false, fmt.Errorf("Error more than one Group found with identity: %s", groupIden)
+				} else {
+					d.SetId("")
+					return false, fmt.Errorf("Error testing existence of Group: %s", groupIden)
+				}
+
 			} else {
 				return false, nil
 			}
