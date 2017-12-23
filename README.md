@@ -29,9 +29,9 @@ Plugin Version | Supported NiFi API Version
 - [Terraform by HashiCorp](https://www.terraform.io/)
 - [NiFi API Documentation](https://nifi.apache.org/docs/nifi-docs/rest-api/)
 
-## Contributors 
+## Contributors
 
-- [Egor Pushkin](https://www.linkedin.com/in/egorpushkin/) | [egor@glympse.com](mailto:egor@glympse.com) 
+- [Egor Pushkin](https://www.linkedin.com/in/egorpushkin/) | [egor@glympse.com](mailto:egor@glympse.com)
 - Josh Hardy | [josh@glympse.com](mailto:josh@glympse.com>)
 - Thibaut Colar | [tcolar@colar.net](mailto:tcolar@colar.net)
 
