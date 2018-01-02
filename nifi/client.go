@@ -168,6 +168,7 @@ type ProcessorRelationship struct {
 type ProcessorConfig struct {
 	SchedulingStrategy               string `json:"schedulingStrategy"`
 	SchedulingPeriod                 string `json:"schedulingPeriod"`
+	ExecutionNode                    string `json:"executionNode"`
 	ConcurrentlySchedulableTaskCount int    `json:"concurrentlySchedulableTaskCount"`
 
 	Properties                  map[string]interface{} `json:"properties"`
@@ -297,6 +298,8 @@ type ConnectionHand struct {
 type ConnectionComponent struct {
 	Id                    string         `json:"id,omitempty"`
 	ParentGroupId         string         `json:"parentGroupId"`
+	BackPressureDataSizeThreshold	string	`json:"backPressureDataSizeThreshold"`
+	BackPressureObjectThreshold		int	`json:"backPressureObjectThreshold"`
 	Source                ConnectionHand `json:"source"`
 	Destination           ConnectionHand `json:"destination"`
 	SelectedRelationships []string       `json:"selectedRelationships"`

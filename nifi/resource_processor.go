@@ -56,6 +56,11 @@ func ResourceProcessor() *schema.Resource {
 										Optional: true,
 										Default:  "0 sec",
 									},
+									"execution_node": {
+										Type:     schema.TypeString,
+										Optional: true,
+										Default:  "ALL",
+									},
 									"properties": {
 										Type:     schema.TypeMap,
 										Required: true,
@@ -359,6 +364,7 @@ func ProcessorFromSchema(d *schema.ResourceData, processor *Processor) error {
 
 	processor.Component.Config.SchedulingStrategy = config["scheduling_strategy"].(string)
 	processor.Component.Config.SchedulingPeriod = config["scheduling_period"].(string)
+	processor.Component.Config.ExecutionNode = config["execution_node"].(string)
 	processor.Component.Config.ConcurrentlySchedulableTaskCount = config["concurrently_schedulable_task_count"].(int)
 
 	processor.Component.Config.Properties = map[string]interface{}{}
@@ -400,6 +406,7 @@ func ProcessorToSchema(d *schema.ResourceData, processor *Processor) error {
 			"concurrently_schedulable_task_count": processor.Component.Config.ConcurrentlySchedulableTaskCount,
 			"scheduling_strategy":                 processor.Component.Config.SchedulingStrategy,
 			"scheduling_period":                   processor.Component.Config.SchedulingPeriod,
+			"execution_node":                      processor.Component.Config.ExecutionNode,
 			"properties":                          processor.Component.Config.Properties,
 			"auto_terminated_relationships":       relationships,
 		}},

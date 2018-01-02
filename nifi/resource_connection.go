@@ -27,6 +27,16 @@ func ResourceConnection() *schema.Resource {
 							Type:     schema.TypeString,
 							Required: true,
 						},
+						"back_pressure_data_size_threshold": {
+							Type:     schema.TypeString,
+							Optional: true,
+							Default: "1 GB",
+						},
+						"back_pressure_object_threshold": {
+							Type:     schema.TypeInt,
+							Optional: true,
+							Default: 10000,
+						},
 						"source": {
 							Type:     schema.TypeList,
 							Required: true,
@@ -288,6 +298,9 @@ func ConnectionFromSchema(d *schema.ResourceData, connection *Connection) error 
 	component := v[0].(map[string]interface{})
 	connection.Component.ParentGroupId = component["parent_group_id"].(string)
 
+	connection.Component.BackPressureDataSizeThreshold = component["back_pressure_data_size_threshold"].(string)
+	connection.Component.BackPressureObjectThreshold = component["back_pressure_object_threshold"].(int)
+
 	v = component["source"].([]interface{})
 	if len(v) != 1 {
 		return fmt.Errorf("Exactly one component.source is required")
@@ -350,6 +363,8 @@ func ConnectionToSchema(d *schema.ResourceData, connection *Connection) error {
 
 	component := []map[string]interface{}{{
 		"parent_group_id": d.Get("parent_group_id").(string),
+		"back_pressure_data_size_threshold": connection.Component.BackPressureDataSizeThreshold,
+		"back_pressure_object_threshold": connection.Component.BackPressureObjectThreshold,
 		"source": []map[string]interface{}{{
 			"type":     connection.Component.Source.Type,
 			"id":       connection.Component.Source.Id,
