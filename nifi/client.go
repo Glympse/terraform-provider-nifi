@@ -673,7 +673,7 @@ type RemoteProcessGroupComponent struct {
 	Name              string   `json:"name"`
 	Position          Position `json:"position"`
 	TargetUris        string   `json:"targetUris"`
-	TransportProtocol string   `json:"transportProtocol"`
+	TransportProtocol string   `json:"transport_protocol"`
 }
 
 type RemoteProcessGroup struct {
