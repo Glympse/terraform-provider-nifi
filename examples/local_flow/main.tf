@@ -45,11 +45,13 @@ resource "nifi_connection" "generate_to_merge_1" {
     source {
       type = "PROCESSOR"
       id = "${nifi_processor.generate_flowfile.id}"
+      group_id = "${nifi_process_group.local_flow.id}"
     }
 
     destination {
       type = "PROCESSOR"
       id = "${nifi_processor.merge_content_1.id}"
+      group_id = "${nifi_process_group.local_flow.id}"
     }
 
     selected_relationships = [
@@ -97,11 +99,13 @@ resource "nifi_connection" "merge_1_to_merge_2" {
     source {
       type = "PROCESSOR"
       id = "${nifi_processor.merge_content_1.id}"
+      group_id = "${nifi_process_group.local_flow.id}"
     }
 
     destination {
       type = "PROCESSOR"
       id = "${nifi_processor.merge_content_2.id}"
+      group_id = "${nifi_process_group.local_flow.id}"
     }
 
     selected_relationships = [
@@ -149,11 +153,13 @@ resource "nifi_connection" "merge_2_to_merge_2" {
     source {
       type = "PROCESSOR"
       id = "${nifi_processor.merge_content_2.id}"
+      group_id = "${nifi_process_group.local_flow.id}"
     }
 
     destination {
       type = "PROCESSOR"
       id = "${nifi_processor.merge_content_2.id}"
+      group_id = "${nifi_process_group.local_flow.id}"
     }
 
     selected_relationships = [
