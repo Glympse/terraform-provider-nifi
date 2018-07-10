@@ -1022,3 +1022,68 @@ func (c *Client) DeleteFunnel(funnel *Funnel) error {
 	_, err := c.JsonCall("DELETE", url, nil, nil)
 	return err
 }
+
+
+// ReportingTask section
+
+type ReportingTaskComponent struct {
+	Id                 string                 `json:"id,omitempty"`
+	ParentGroupId      string                 `json:"parentGroupId,omitempty"`
+	Name               string                 `json:"name,omitempty"`
+	Type               string                 `json:"type,omitempty"`
+	Comments           string                 `json:"comments"`
+	SchedulingStrategy string                 `json:"schedulingStrategy"`
+	SchedulingPeriod   string                 `json:"schedulingPeriod"`
+	Properties         map[string]interface{} `json:"properties"`
+}
+
+type ReportingTask struct {
+	Revision  Revision        `json:"revision"`
+	Component ReportingTaskComponent `json:"component"`
+}
+
+
+func (c *Client) CreateReportingTask(reportingTask *ReportingTask) error {
+	url := fmt.Sprintf("%s://%s/%s/controller/reporting-tasks",
+		c.HttpScheme, c.Config.Host, c.Config.ApiPath)
+	_, err := c.JsonCall("POST", url, reportingTask, reportingTask)
+	if nil != err {
+		return err
+	}
+	c.CleanupNilProperties(reportingTask.Component.Properties)
+	return nil
+}
+
+func (c *Client) GetReportingTask(reportingTaskId string) (*ReportingTask, error) {
+	url := fmt.Sprintf("%s://%s/%s/reporting-tasks/%s",
+		c.HttpScheme, c.Config.Host, c.Config.ApiPath, reportingTaskId)
+	reportingTask := ReportingTask{}
+	code, err := c.JsonCall("GET", url, nil, &reportingTask)
+	if 404 == code {
+		return nil, fmt.Errorf("not_found")
+	}
+	if nil != err {
+		return nil, err
+	}
+
+	c.CleanupNilProperties(reportingTask.Component.Properties)
+	return &reportingTask, nil
+}
+
+func (c *Client) UpdateReportingTask(reportingTask *ReportingTask) error {
+	url := fmt.Sprintf("%s://%s/%s/reporting-tasks/%s",
+		c.HttpScheme, c.Config.Host, c.Config.ApiPath, reportingTask.Component.Id)
+	_, err := c.JsonCall("PUT", url, reportingTask, reportingTask)
+	if nil != err {
+		return err
+	}
+	return nil
+}
+
+
+func (c *Client) DeleteReportingTask(reportingTask *ReportingTask) error {
+	url := fmt.Sprintf("%s://%s/%s/reporting-tasks/%s?version=%d",
+		c.HttpScheme, c.Config.Host, c.Config.ApiPath, reportingTask.Component.Id, reportingTask.Revision.Version)
+	_, err := c.JsonCall("DELETE", url, nil, nil)
+	return err
+}
