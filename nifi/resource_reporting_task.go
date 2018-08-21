@@ -40,18 +40,18 @@ func ResourceReportingTask() *schema.Resource {
 							Optional: true,
 						},
 						"scheduling_period": {
-										Type:     schema.TypeString,
-										Optional: true,
-										Default:  "0 sec",
+							Type:     schema.TypeString,
+							Optional: true,
+							Default:  "0 sec",
 						},
 						"scheduling_strategy": {
-										Type:     schema.TypeString,
-										Optional: true,
-										Default:  "TIMER_DRIVEN",
+							Type:     schema.TypeString,
+							Optional: true,
+							Default:  "TIMER_DRIVEN",
 						},
 						"properties": {
-										Type:     schema.TypeMap,
-										Required: true,
+							Type:     schema.TypeMap,
+							Required: true,
 						},
 					},
 				},
@@ -180,7 +180,7 @@ func ReportingTaskFromSchema(d *schema.ResourceData, reportingTask *ReportingTas
 	parentGroupId := component["parent_group_id"].(string)
 	reportingTask.Component.ParentGroupId = parentGroupId
 	reportingTask.Component.Name = component["name"].(string)
-    reportingTask.Component.Type = component["type"].(string)
+	reportingTask.Component.Type = component["type"].(string)
 
 	reportingTask.Component.Properties = map[string]interface{}{}
 	properties := component["properties"].(map[string]interface{})
@@ -201,12 +201,12 @@ func ReportingTaskToSchema(d *schema.ResourceData, reportingTask *ReportingTask)
 	d.Set("revision", revision)
 
 	component := []map[string]interface{}{{
-		"parent_group_id": d.Get("parent_group_id").(string),
-		"name":            reportingTask.Component.Name,
-		"type":            reportingTask.Component.Type,
-		"properties":      reportingTask.Component.Properties,
+		"parent_group_id":     d.Get("parent_group_id").(string),
+		"name":                reportingTask.Component.Name,
+		"type":                reportingTask.Component.Type,
+		"properties":          reportingTask.Component.Properties,
 		"scheduling_strategy": reportingTask.Component.SchedulingStrategy,
-		"scheduling_period": reportingTask.Component.SchedulingPeriod,
+		"scheduling_period":   reportingTask.Component.SchedulingPeriod,
 	}}
 	d.Set("component", component)
 

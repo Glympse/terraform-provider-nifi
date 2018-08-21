@@ -13,15 +13,15 @@ import (
 )
 
 type Client struct {
-	Config Config
-	Client *http.Client
+	Config     Config
+	Client     *http.Client
 	HttpScheme string
 	// The mutex is used by the plugin to prevent parallel execution of some update/delete operations.
 	// There are scenarios when updating a connection involves modifying related processors and vice versa.
 	// This breaks Terraform model to some extent but at the same time is unavoidable in NiFi world.
 	// Currently only flows that involve cross-resource interactions are wrapped into lock/unlock sections.
 	// Most of operations can still be performed in parallel.
-	Lock       sync.Mutex
+	Lock sync.Mutex
 }
 
 func NewClient(config Config) *Client {
@@ -296,14 +296,14 @@ type ConnectionHand struct {
 }
 
 type ConnectionComponent struct {
-	Id                    string         `json:"id,omitempty"`
-	ParentGroupId         string         `json:"parentGroupId"`
-	BackPressureDataSizeThreshold	string	`json:"backPressureDataSizeThreshold"`
-	BackPressureObjectThreshold		int	`json:"backPressureObjectThreshold"`
-	Source                ConnectionHand `json:"source"`
-	Destination           ConnectionHand `json:"destination"`
-	SelectedRelationships []string       `json:"selectedRelationships"`
-	Bends                 []Position     `json:"bends"`
+	Id                            string         `json:"id,omitempty"`
+	ParentGroupId                 string         `json:"parentGroupId"`
+	BackPressureDataSizeThreshold string         `json:"backPressureDataSizeThreshold"`
+	BackPressureObjectThreshold   int            `json:"backPressureObjectThreshold"`
+	Source                        ConnectionHand `json:"source"`
+	Destination                   ConnectionHand `json:"destination"`
+	SelectedRelationships         []string       `json:"selectedRelationships"`
+	Bends                         []Position     `json:"bends"`
 }
 
 type Connection struct {
@@ -1023,7 +1023,6 @@ func (c *Client) DeleteFunnel(funnel *Funnel) error {
 	return err
 }
 
-
 // ReportingTask section
 
 type ReportingTaskComponent struct {
@@ -1038,10 +1037,9 @@ type ReportingTaskComponent struct {
 }
 
 type ReportingTask struct {
-	Revision  Revision        `json:"revision"`
+	Revision  Revision               `json:"revision"`
 	Component ReportingTaskComponent `json:"component"`
 }
-
 
 func (c *Client) CreateReportingTask(reportingTask *ReportingTask) error {
 	url := fmt.Sprintf("%s://%s/%s/controller/reporting-tasks",
@@ -1079,7 +1077,6 @@ func (c *Client) UpdateReportingTask(reportingTask *ReportingTask) error {
 	}
 	return nil
 }
-
 
 func (c *Client) DeleteReportingTask(reportingTask *ReportingTask) error {
 	url := fmt.Sprintf("%s://%s/%s/reporting-tasks/%s?version=%d",
