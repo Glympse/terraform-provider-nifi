@@ -13,15 +13,15 @@ import (
 )
 
 type Client struct {
-	Config Config
-	Client *http.Client
+	Config     Config
+	Client     *http.Client
 	HttpScheme string
 	// The mutex is used by the plugin to prevent parallel execution of some update/delete operations.
 	// There are scenarios when updating a connection involves modifying related processors and vice versa.
 	// This breaks Terraform model to some extent but at the same time is unavoidable in NiFi world.
 	// Currently only flows that involve cross-resource interactions are wrapped into lock/unlock sections.
 	// Most of operations can still be performed in parallel.
-	Lock       sync.Mutex
+	Lock sync.Mutex
 }
 
 func NewClient(config Config) *Client {
@@ -296,14 +296,14 @@ type ConnectionHand struct {
 }
 
 type ConnectionComponent struct {
-	Id                    string         `json:"id,omitempty"`
-	ParentGroupId         string         `json:"parentGroupId"`
-	BackPressureDataSizeThreshold	string	`json:"backPressureDataSizeThreshold"`
-	BackPressureObjectThreshold		int	`json:"backPressureObjectThreshold"`
-	Source                ConnectionHand `json:"source"`
-	Destination           ConnectionHand `json:"destination"`
-	SelectedRelationships []string       `json:"selectedRelationships"`
-	Bends                 []Position     `json:"bends"`
+	Id                            string         `json:"id,omitempty"`
+	ParentGroupId                 string         `json:"parentGroupId"`
+	BackPressureDataSizeThreshold string         `json:"backPressureDataSizeThreshold"`
+	BackPressureObjectThreshold   int            `json:"backPressureObjectThreshold"`
+	Source                        ConnectionHand `json:"source"`
+	Destination                   ConnectionHand `json:"destination"`
+	SelectedRelationships         []string       `json:"selectedRelationships"`
+	Bends                         []Position     `json:"bends"`
 }
 
 type Connection struct {
@@ -1019,6 +1019,68 @@ func (c *Client) UpdateFunnel(funnel *Funnel) error {
 func (c *Client) DeleteFunnel(funnel *Funnel) error {
 	url := fmt.Sprintf("%s://%s/%s/funnels/%s?version=%d",
 		c.HttpScheme, c.Config.Host, c.Config.ApiPath, funnel.Component.Id, funnel.Revision.Version)
+	_, err := c.JsonCall("DELETE", url, nil, nil)
+	return err
+}
+
+// ReportingTask section
+
+type ReportingTaskComponent struct {
+	Id                 string                 `json:"id,omitempty"`
+	ParentGroupId      string                 `json:"parentGroupId,omitempty"`
+	Name               string                 `json:"name,omitempty"`
+	Type               string                 `json:"type,omitempty"`
+	Comments           string                 `json:"comments"`
+	SchedulingStrategy string                 `json:"schedulingStrategy"`
+	SchedulingPeriod   string                 `json:"schedulingPeriod"`
+	Properties         map[string]interface{} `json:"properties"`
+}
+
+type ReportingTask struct {
+	Revision  Revision               `json:"revision"`
+	Component ReportingTaskComponent `json:"component"`
+}
+
+func (c *Client) CreateReportingTask(reportingTask *ReportingTask) error {
+	url := fmt.Sprintf("%s://%s/%s/controller/reporting-tasks",
+		c.HttpScheme, c.Config.Host, c.Config.ApiPath)
+	_, err := c.JsonCall("POST", url, reportingTask, reportingTask)
+	if nil != err {
+		return err
+	}
+	c.CleanupNilProperties(reportingTask.Component.Properties)
+	return nil
+}
+
+func (c *Client) GetReportingTask(reportingTaskId string) (*ReportingTask, error) {
+	url := fmt.Sprintf("%s://%s/%s/reporting-tasks/%s",
+		c.HttpScheme, c.Config.Host, c.Config.ApiPath, reportingTaskId)
+	reportingTask := ReportingTask{}
+	code, err := c.JsonCall("GET", url, nil, &reportingTask)
+	if 404 == code {
+		return nil, fmt.Errorf("not_found")
+	}
+	if nil != err {
+		return nil, err
+	}
+
+	c.CleanupNilProperties(reportingTask.Component.Properties)
+	return &reportingTask, nil
+}
+
+func (c *Client) UpdateReportingTask(reportingTask *ReportingTask) error {
+	url := fmt.Sprintf("%s://%s/%s/reporting-tasks/%s",
+		c.HttpScheme, c.Config.Host, c.Config.ApiPath, reportingTask.Component.Id)
+	_, err := c.JsonCall("PUT", url, reportingTask, reportingTask)
+	if nil != err {
+		return err
+	}
+	return nil
+}
+
+func (c *Client) DeleteReportingTask(reportingTask *ReportingTask) error {
+	url := fmt.Sprintf("%s://%s/%s/reporting-tasks/%s?version=%d",
+		c.HttpScheme, c.Config.Host, c.Config.ApiPath, reportingTask.Component.Id, reportingTask.Revision.Version)
 	_, err := c.JsonCall("DELETE", url, nil, nil)
 	return err
 }
