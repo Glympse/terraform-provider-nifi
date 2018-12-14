@@ -70,6 +70,10 @@ func ResourceProcessor() *schema.Resource {
 										Required: true,
 										Elem:     &schema.Schema{Type: schema.TypeString},
 									},
+									"comments": {
+										Type: schema.TypeString,
+										Optional: true,
+									},
 								},
 							},
 						},
@@ -347,6 +351,7 @@ func ProcessorFromSchema(d *schema.ResourceData, processor *Processor) error {
 	processor.Component.ParentGroupId = component["parent_group_id"].(string)
 	processor.Component.Name = component["name"].(string)
 	processor.Component.Type = component["type"].(string)
+	processor.Component.Comments = component["comments"].(string)
 
 	v = component["position"].([]interface{})
 	if len(v) != 1 {
@@ -398,6 +403,7 @@ func ProcessorToSchema(d *schema.ResourceData, processor *Processor) error {
 		"parent_group_id": d.Get("parent_group_id").(string),
 		"name":            processor.Component.Name,
 		"type":            processor.Component.Type,
+		"comments":        processor.Component.Comments,
 		"position": []map[string]interface{}{{
 			"x": processor.Component.Position.X,
 			"y": processor.Component.Position.Y,
