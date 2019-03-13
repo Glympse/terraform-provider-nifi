@@ -14,7 +14,11 @@ func Provider() terraform.ResourceProvider {
 				Required:    true,
 				DefaultFunc: schema.EnvDefaultFunc("NIFI_HOST", nil),
 			},
-
+			"http_scheme": &schema.Schema{
+				Type:        schema.TypeString,
+				Optional:    true,
+				DefaultFunc: schema.EnvDefaultFunc("NIFI_HTTP_SCHEME", "http"),
+			},
 			"api_path": &schema.Schema{
 				Type:        schema.TypeString,
 				Optional:    true,
@@ -52,6 +56,7 @@ func Provider() terraform.ResourceProvider {
 func providerConfigure(d *schema.ResourceData) (interface{}, error) {
 	config := Config{
 		Host:          d.Get("host").(string),
+		HttpScheme:    d.Get("http_scheme").(string),
 		ApiPath:       d.Get("api_path").(string),
 		AdminCertPath: d.Get("admin_cert").(string),
 		AdminKeyPath:  d.Get("admin_key").(string),

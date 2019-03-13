@@ -7,4 +7,5 @@ type Config struct {
 	ApiPath       string
 	AdminCertPath string
 	AdminKeyPath  string
+	HttpScheme    string
 }

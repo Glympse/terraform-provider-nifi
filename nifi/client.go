@@ -26,7 +26,7 @@ type Client struct {
 
 func NewClient(config Config) *Client {
 	httpClient := &http.Client{}
-	scheme := "http"
+	scheme := config.HttpScheme
 	if config.AdminCertPath != "" && config.AdminKeyPath != "" {
 		cert, err := tls.LoadX509KeyPair(config.AdminCertPath, config.AdminKeyPath)
 		if err != nil {
