@@ -105,6 +105,7 @@ type ProcessGroupComponent struct {
 	ParentGroupId string   `json:"parentGroupId"`
 	Name          string   `json:"name"`
 	Position      Position `json:"position"`
+	Comments      string   `json:"comments"`
 }
 
 type ProcessGroup struct {
@@ -162,6 +163,7 @@ func (c *Client) GetProcessGroupConnections(processGroupId string) (*Connections
 
 type ProcessorRelationship struct {
 	Name          string `json:"name"`
+	Comments      string `json:"comments"`
 	AutoTerminate bool   `json:"autoTerminate"`
 }
 

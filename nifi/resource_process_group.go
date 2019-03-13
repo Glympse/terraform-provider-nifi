@@ -32,6 +32,10 @@ func ResourceProcessGroup() *schema.Resource {
 							Required: true,
 						},
 						"position": SchemaPosition(),
+						"comments": {
+							Type: schema.TypeString,
+							Optional: true,
+						},
 					},
 				},
 			},
@@ -159,6 +163,7 @@ func ProcessGroupFromSchema(d *schema.ResourceData, processGroup *ProcessGroup) 
 	parentGroupId := component["parent_group_id"].(string)
 	processGroup.Component.ParentGroupId = parentGroupId
 	processGroup.Component.Name = component["name"].(string)
+	processGroup.Component.Comments = component["comments"].(string)
 
 	v = component["position"].([]interface{})
 	if len(v) != 1 {
@@ -180,6 +185,7 @@ func ProcessGroupToSchema(d *schema.ResourceData, processGroup *ProcessGroup) er
 	component := []map[string]interface{}{{
 		"parent_group_id": d.Get("parent_group_id").(string),
 		"name":            processGroup.Component.Name,
+		"comments":        processGroup.Component.Comments,
 		"position": []map[string]interface{}{{
 			"x": processGroup.Component.Position.X,
 			"y": processGroup.Component.Position.Y,
